@@ -1,8 +1,6 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   try {
-    const { mode, z, x, y } = req.query as any;
+    const { mode, z, x, y } = req.query as Record<string, string>;
 
     if (mode !== "relative" && mode !== "absolute") {
       res.status(400).send("Invalid mode");
@@ -32,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const buf = Buffer.from(await r.arrayBuffer());
     res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, max-age=60");
+    res.setHeader("Cache-Control", "public, s-maxage=60, max-age=60");
     res.status(200).send(buf);
   } catch (e: any) {
     res.status(500).send(e?.message ?? "Server error");
