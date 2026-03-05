@@ -220,7 +220,7 @@ export default function MapScreen() {
         <Source
           id="tomtom-traffic"
           type="raster"
-          tiles={["/api/tomtom/flow/relative/{z}/{x}/{y}.png"]}
+          tiles={["/api/tomtom-flow.png?mode=relative&z={z}&x={x}&y={y}"]}
           tileSize={256}
         >
           <Layer
