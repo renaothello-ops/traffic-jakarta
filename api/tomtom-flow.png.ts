@@ -1,14 +1,15 @@
-export default async function handler(req: any, res: any) {
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const { mode, z, x, y } = req.query as {
-      mode: "relative" | "absolute";
-      z: string;
-      x: string;
-      y: string;
-    };
+    const { mode, z, x, y } = req.query as any;
 
     if (mode !== "relative" && mode !== "absolute") {
       res.status(400).send("Invalid mode");
+      return;
+    }
+    if (!z || !x || !y) {
+      res.status(400).send("Missing z/x/y");
       return;
     }
 
@@ -31,7 +32,7 @@ export default async function handler(req: any, res: any) {
 
     const buf = Buffer.from(await r.arrayBuffer());
     res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, s-maxage=60, max-age=60");
+    res.setHeader("Cache-Control", "public, max-age=60");
     res.status(200).send(buf);
   } catch (e: any) {
     res.status(500).send(e?.message ?? "Server error");
