@@ -205,84 +205,95 @@ export default function MapScreen() {
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
-      <Map
-        ref={mapRef}
-        mapLib={maplibregl as any}
-        initialViewState={{ latitude: center.lat, longitude: center.lng, zoom }}
-        style={{ position: "absolute", inset: 0 }}
-        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-        onMove={(e) => {
-          setCenter({ lat: e.viewState.latitude, lng: e.viewState.longitude });
-          setZoom(e.viewState.zoom);
+     <Map
+  ref={mapRef}
+  mapLib={maplibregl as any}
+  initialViewState={{
+    latitude: center.lat,
+    longitude: center.lng,
+    zoom: 13,
+  }}
+  style={{ position: "absolute", inset: 0 }}
+  mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+  onMove={(e) => {
+    setCenter({
+      lat: e.viewState.latitude,
+      lng: e.viewState.longitude,
+    });
+    setZoom(e.viewState.zoom);
+  }}
+>
+  {/* ✅ TomTom 渋滞 overlay */}
+  <Source
+    id="tomtom-traffic"
+    type="raster"
+    tiles={["/api/tomtom-flow.png?mode=relative&z={z}&x={x}&y={y}"]}
+    tileSize={256}
+  >
+    <Layer
+  id="tomtom-traffic-layer"
+  type="raster"
+  paint={{
+    "raster-opacity": 1,
+    "raster-contrast": 0.2,
+    "raster-saturation": 1,
+  }}
+/>
+  </Source>
+
+  {/* ✅ 自分の現在地マーカー */}
+  {myPos && (
+    <Marker longitude={myPos.lng} latitude={myPos.lat} anchor="center">
+      <div
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 999,
+          background: "#1a73e8",
+          boxShadow: "0 0 0 6px rgba(26,115,232,0.25)",
+          border: "2px solid white",
         }}
+        aria-label="my-location"
+      />
+    </Marker>
+  )}
+
+  {/* ✅ 投稿マーカー（自分の投稿だけドラッグ可） */}
+  {posts.map((p) => (
+    <Marker
+      key={p.id}
+      longitude={p.lng}
+      latitude={p.lat}
+      anchor="bottom"
+      draggable={isMine(p)}
+      onDragEnd={async (e) => {
+        await updatePostLocation(p.id, e.lngLat.lat, e.lngLat.lng);
+      }}
+    >
+      <button
+        onClick={() =>
+          alert(
+            `${typeMeta[p.type].emoji} ${typeMeta[p.type].label}\n${minutesAgo(
+              p.createdAt
+            )} min ago\n${p.text ?? ""}`
+          )
+        }
+        style={{
+          border: "none",
+          borderRadius: 999,
+          padding: "8px 10px",
+          background: "rgba(0,0,0,0.75)",
+          color: "white",
+          cursor: isMine(p) ? "grab" : "pointer",
+        }}
+        aria-label="post"
+        title={isMine(p) ? "Drag to move" : "Read only"}
       >
-        {/* ✅ TomTom 渋滞 overlay（/api/tomtom が 200 で PNG を返すときだけ見える） */}
-        <Source
-          id="tomtom-traffic"
-          type="raster"
-          tiles={["/api/tomtom-flow.png?mode=relative&z={z}&x={x}&y={y}"]}
-          tileSize={256}
-        >
-          <Layer
-            id="tomtom-traffic-layer"
-            type="raster"
-            paint={{
-              "raster-opacity": 0.85,
-            }}
-          />
-        </Source>
-
-        {/* ✅ 自分の現在地マーカー */}
-        {myPos && (
-          <Marker longitude={myPos.lng} latitude={myPos.lat} anchor="center">
-            <div
-              style={{
-                width: 16,
-                height: 16,
-                borderRadius: 999,
-                background: "#1a73e8",
-                boxShadow: "0 0 0 6px rgba(26,115,232,0.25)",
-                border: "2px solid white",
-              }}
-              aria-label="my-location"
-            />
-          </Marker>
-        )}
-
-        {/* ✅ 投稿マーカー（自分の投稿だけドラッグ可） */}
-        {posts.map((p) => (
-          <Marker
-            key={p.id}
-            longitude={p.lng}
-            latitude={p.lat}
-            anchor="bottom"
-            draggable={isMine(p)}
-            onDragEnd={async (e) => {
-              await updatePostLocation(p.id, e.lngLat.lat, e.lngLat.lng);
-            }}
-          >
-            <button
-              onClick={() =>
-                alert(
-                  `${typeMeta[p.type].emoji} ${typeMeta[p.type].label}\n${minutesAgo(p.createdAt)} min ago\n${p.text ?? ""}`
-                )
-              }
-              style={{
-                border: "none",
-                borderRadius: 999,
-                padding: "8px 10px",
-                background: "rgba(0,0,0,0.75)",
-                color: "white",
-                cursor: isMine(p) ? "grab" : "pointer",
-              }}
-              aria-label="post"
-              title={isMine(p) ? "Drag to move" : "Read only"}
-            >
-              {typeMeta[p.type].emoji}
-            </button>
-          </Marker>
-        ))}
-      </Map>
+        {typeMeta[p.type].emoji}
+      </button>
+    </Marker>
+  ))}
+</Map>
 
       {/* 上部バー */}
       <div style={{ position: "absolute", top: 10, left: 10, right: 10, display: "grid", gap: 10, zIndex: 10 }}>
