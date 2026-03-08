@@ -222,6 +222,9 @@ export default function MapScreen() {
     });
     setZoom(e.viewState.zoom);
   }}
+  onLoad={() => {
+    console.log("map loaded");
+  }}
 >
   {/* ✅ TomTom 渋滞 overlay */}
   <Source
