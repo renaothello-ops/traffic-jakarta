@@ -72,6 +72,27 @@ export default function MapScreen() {
     return () => unsub();
   }, [filterMin]);
 
+  // ⭐ 追加① selectedPost 保存
+useEffect(() => {
+  if (selectedPost) {
+    localStorage.setItem("selectedPostId", selectedPost.id);
+  } else {
+    localStorage.removeItem("selectedPostId");
+  }
+}, [selectedPost]);
+
+
+// ⭐ 追加② reload時復元
+useEffect(() => {
+  const savedId = localStorage.getItem("selectedPostId");
+  if (!savedId) return;
+
+  const found = posts.find((p) => p.id === savedId);
+  if (found) {
+    setSelectedPost(found);
+  }
+}, [posts]);
+
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current);
 
