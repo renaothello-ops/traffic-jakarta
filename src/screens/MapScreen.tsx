@@ -329,12 +329,13 @@ export default function MapScreen() {
       position: "absolute",
       left: 16,
       right: 16,
-      bottom: 260,
-      zIndex: 25,
-      background: "rgba(255,255,255,0.98)",
-      borderRadius: 16,
-      padding: 14,
-      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+      bottom: 320,
+      zIndex: 30,
+      background: "white",
+      borderRadius: 18,
+      padding: 16,
+      boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+      border: "1px solid rgba(0,0,0,0.08)",
     }}
   >
     <div
@@ -344,7 +345,7 @@ export default function MapScreen() {
         alignItems: "center",
       }}
     >
-      <div style={{ fontWeight: 900 }}>
+      <div style={{ fontWeight: 900, fontSize: 18 }}>
         {typeMeta[selectedPost.type].emoji} {typeMeta[selectedPost.type].label}
       </div>
       <button
@@ -352,7 +353,7 @@ export default function MapScreen() {
         style={{
           border: "none",
           background: "transparent",
-          fontSize: 18,
+          fontSize: 20,
           cursor: "pointer",
         }}
       >
@@ -364,18 +365,18 @@ export default function MapScreen() {
       {timeAgo(selectedPost.createdAt)}
     </div>
 
-    <div style={{ marginTop: 8 }}>
+    <div style={{ marginTop: 10, fontSize: 16, lineHeight: 1.5 }}>
       {selectedPost.text || "No description"}
     </div>
 
-    <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+    <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
       <button
         onClick={() => {
           startEdit(selectedPost);
           setSelectedPost(null);
         }}
         style={{
-          padding: "8px 10px",
+          padding: "9px 12px",
           borderRadius: 12,
           border: "1px solid rgba(0,0,0,0.15)",
           background: "white",
@@ -392,7 +393,7 @@ export default function MapScreen() {
           setSelectedPost(null);
         }}
         style={{
-          padding: "8px 10px",
+          padding: "9px 12px",
           borderRadius: 12,
           border: "1px solid rgba(0,0,0,0.15)",
           background: "white",
