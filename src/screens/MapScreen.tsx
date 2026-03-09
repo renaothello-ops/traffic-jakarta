@@ -42,7 +42,10 @@ export default function MapScreen() {
   const mapRef = useRef<MapRef | null>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
-  const [filterMin, setFilterMin] = useState(10);
+  const [filterMin, setFilterMin] = useState<number>(() => {
+    const saved = localStorage.getItem("filterMin");
+    return saved ? Number(saved) : 10;
+  });
 
   const [center, setCenter] = useState(JAKARTA);
   const [zoom, setZoom] = useState(15);
@@ -67,31 +70,38 @@ export default function MapScreen() {
 
   const [mapReady, setMapReady] = useState(false);
 
+  // 投稿一覧を現在の filter で取得
   useEffect(() => {
     const unsub = listenActivePosts(filterMin, setPosts);
     return () => unsub();
   }, [filterMin]);
 
-  // ⭐ 追加① selectedPost 保存
-useEffect(() => {
-  if (selectedPost) {
-    localStorage.setItem("selectedPostId", selectedPost.id);
-  } else {
-    localStorage.removeItem("selectedPostId");
-  }
-}, [selectedPost]);
+  // filter を保存
+  useEffect(() => {
+    localStorage.setItem("filterMin", String(filterMin));
+  }, [filterMin]);
 
+  // selected post id を保存
+  useEffect(() => {
+    if (selectedPost?.id) {
+      localStorage.setItem("selectedPostId", selectedPost.id);
+    } else {
+      localStorage.removeItem("selectedPostId");
+    }
+  }, [selectedPost]);
 
-// ⭐ 追加② reload時復元
-useEffect(() => {
-  const savedId = localStorage.getItem("selectedPostId");
-  if (!savedId) return;
+  // posts 更新後に selected post を復元
+  useEffect(() => {
+    const savedId = localStorage.getItem("selectedPostId");
+    if (!savedId) return;
 
-  const found = posts.find((p) => p.id === savedId);
-  if (found) {
-    setSelectedPost(found);
-  }
-}, [posts]);
+    const found = posts.find((p) => p.id === savedId);
+    if (found) {
+      setSelectedPost(found);
+    } else {
+      setSelectedPost(null);
+    }
+  }, [posts]);
 
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current);
@@ -112,6 +122,7 @@ useEffect(() => {
 
   const feed = useMemo(() => posts.slice(0, 50), [posts]);
 
+  // 初回だけ現在地へ
   useEffect(() => {
     if (hasCenteredOnce) return;
 
@@ -147,25 +158,31 @@ useEffect(() => {
   }
 
   async function onSubmit() {
-    await createPost({
-      type,
-      text,
-      lat: center.lat,
-      lng: center.lng,
-      username: MY_NAME,
-      ttlMinutes: filterMin,
-    });
+    try {
+      await createPost({
+        type,
+        text,
+        lat: center.lat,
+        lng: center.lng,
+        username: MY_NAME,
+        ttlMinutes: filterMin,
+      });
 
-    setText("");
-    setType("traffic");
-    setOpenComposer(false);
+      // 投稿成功で閉じる
+      setText("");
+      setType("traffic");
+      setOpenComposer(false);
+    } catch (err) {
+      console.error("createPost failed:", err);
+      alert("Failed to post. Please try again.");
+    }
   }
 
   function goMyLocation() {
     setLocErr(null);
 
     if (!navigator.geolocation) {
-      setLocErr("このブラウザは位置情報に対応していません");
+      setLocErr("This browser does not support location.");
       return;
     }
 
@@ -188,8 +205,8 @@ useEffect(() => {
       (err) => {
         setLocErr(
           err.code === 1
-            ? "位置情報の許可がOFFです（ブラウザで許可してね）"
-            : "位置情報の取得に失敗しました"
+            ? "Location permission is off. Please enable it in your browser."
+            : "Failed to get current location."
         );
       },
       { enableHighAccuracy: true, timeout: 8000 }
@@ -200,21 +217,35 @@ useEffect(() => {
     setEditing(p);
     setEditText(p.text ?? "");
     setEditType(p.type);
+    setSelectedPost(p);
   }
 
   async function saveEdit() {
     if (!editing) return;
-    await updatePost(editing.id, { text: editText, type: editType });
+
+    await updatePost(editing.id, {
+      text: editText,
+      type: editType,
+    });
+
     setEditing(null);
   }
 
   async function removePost(p: Post) {
-    const ok = confirm("削除する？");
+    const ok = confirm("Delete this post?");
     if (!ok) return;
+
     await deletePost(p.id);
+
+    if (selectedPost?.id === p.id) {
+      setSelectedPost(null);
+    }
+    if (editing?.id === p.id) {
+      setEditing(null);
+    }
   }
 
-  // ✅ ここが大事：map load 後に直接 source/layer を追加
+  // map load 後に TomTom layer 追加
   useEffect(() => {
     if (!mapReady) return;
 
@@ -225,12 +256,8 @@ useEffect(() => {
     const layerId = "tomtom-traffic-layer";
 
     const addTrafficLayer = () => {
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId);
-      }
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId);
-      }
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
 
       map.addSource(sourceId, {
         type: "raster",
@@ -266,12 +293,8 @@ useEffect(() => {
 
     return () => {
       map.off("styledata", handleStyleData);
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId);
-      }
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId);
-      }
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
     };
   }, [mapReady]);
 
@@ -321,8 +344,10 @@ useEffect(() => {
             longitude={p.lng}
             latitude={p.lat}
             anchor="bottom"
-            draggable={isMine(p)}
+            // 普段は動かせない。Edit中の投稿だけ動かせる
+            draggable={editing?.id === p.id}
             onDragEnd={async (e) => {
+              if (editing?.id !== p.id) return;
               await updatePostLocation(p.id, e.lngLat.lat, e.lngLat.lng);
             }}
           >
@@ -332,101 +357,150 @@ useEffect(() => {
                 border: "none",
                 borderRadius: 999,
                 padding: "8px 10px",
-                background: "rgba(0,0,0,0.75)",
+                background:
+                  editing?.id === p.id
+                    ? "rgba(255,140,0,0.9)"
+                    : "rgba(0,0,0,0.75)",
                 color: "white",
-                cursor: isMine(p) ? "grab" : "pointer",
+                cursor: editing?.id === p.id ? "grab" : "pointer",
+                fontWeight: 700,
               }}
               aria-label="post"
-              title={isMine(p) ? "Drag to move" : "Read only"}
+              title={
+                editing?.id === p.id
+                  ? "Drag to update location"
+                  : "Open post"
+              }
             >
               {typeMeta[p.type].emoji}
             </button>
           </Marker>
         ))}
       </Map>
-{selectedPost && (
-  <div
-    style={{
-      position: "absolute",
-      left: 16,
-      right: 16,
-      bottom: 320,
-      zIndex: 30,
-      background: "white",
-      borderRadius: 18,
-      padding: 16,
-      boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
-      border: "1px solid rgba(0,0,0,0.08)",
-    }}
-  >
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <div style={{ fontWeight: 900, fontSize: 18 }}>
-        {typeMeta[selectedPost.type].emoji} {typeMeta[selectedPost.type].label}
-      </div>
-      <button
-        onClick={() => setSelectedPost(null)}
-        style={{
-          border: "none",
-          background: "transparent",
-          fontSize: 20,
-          cursor: "pointer",
-        }}
-      >
-        ✕
-      </button>
-    </div>
 
-    <div style={{ marginTop: 6, fontSize: 12, opacity: 0.65 }}>
-      {timeAgo(selectedPost.createdAt)}
-    </div>
+      {/* 本物アプリっぽい Bottom Sheet */}
+      {selectedPost && (
+        <div
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            bottom: 320,
+            zIndex: 30,
+            background: "white",
+            borderRadius: 20,
+            padding: 16,
+            boxShadow: "0 14px 36px rgba(0,0,0,0.18)",
+            border: "1px solid rgba(0,0,0,0.08)",
+          }}
+        >
+          <div
+            style={{
+              width: 42,
+              height: 5,
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.12)",
+              margin: "0 auto 12px auto",
+            }}
+          />
 
-    <div style={{ marginTop: 10, fontSize: 16, lineHeight: 1.5 }}>
-      {selectedPost.text || "No description"}
-    </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ fontWeight: 900, fontSize: 18 }}>
+              {typeMeta[selectedPost.type].emoji} {typeMeta[selectedPost.type].label}
+            </div>
+            <button
+              onClick={() => setSelectedPost(null)}
+              style={{
+                border: "none",
+                background: "transparent",
+                fontSize: 20,
+                cursor: "pointer",
+              }}
+            >
+              ✕
+            </button>
+          </div>
 
-    <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-      <button
-        onClick={() => {
-          startEdit(selectedPost);
-          setSelectedPost(null);
-        }}
-        style={{
-          padding: "9px 12px",
-          borderRadius: 12,
-          border: "1px solid rgba(0,0,0,0.15)",
-          background: "white",
-          cursor: "pointer",
-          fontWeight: 700,
-        }}
-      >
-        ✏️ Edit
-      </button>
+          <div style={{ marginTop: 6, fontSize: 12, opacity: 0.65 }}>
+            {timeAgo(selectedPost.createdAt)}
+          </div>
 
-      <button
-        onClick={() => {
-          removePost(selectedPost);
-          setSelectedPost(null);
-        }}
-        style={{
-          padding: "9px 12px",
-          borderRadius: 12,
-          border: "1px solid rgba(0,0,0,0.15)",
-          background: "white",
-          cursor: "pointer",
-          fontWeight: 700,
-        }}
-      >
-        🗑 Delete
-      </button>
-    </div>
-  </div>
-)}
+          <div style={{ marginTop: 10, fontSize: 16, lineHeight: 1.5 }}>
+            {selectedPost.text || "No description"}
+          </div>
+
+          {editing?.id === selectedPost.id && (
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                color: "#d97706",
+                fontWeight: 700,
+              }}
+            >
+              Drag this marker on the map, then tap Save.
+            </div>
+          )}
+
+          <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={() => startEdit(selectedPost)}
+              style={{
+                padding: "9px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.15)",
+                background: "white",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              ✏️ Edit
+            </button>
+
+            <button
+              onClick={() => removePost(selectedPost)}
+              style={{
+                padding: "9px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.15)",
+                background: "white",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              🗑 Delete
+            </button>
+
+            <button
+              onClick={() => {
+                mapRef.current?.flyTo({
+                  center: [selectedPost.lng, selectedPost.lat],
+                  zoom: Math.max(16, zoom),
+                  duration: 700,
+                });
+              }}
+              style={{
+                padding: "9px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.15)",
+                background: "white",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              📍 Focus
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Top bar */}
       <div
         style={{
           position: "absolute",
@@ -544,6 +618,7 @@ useEffect(() => {
         </div>
       </div>
 
+      {/* Current location button */}
       <div
         style={{
           position: "absolute",
@@ -583,6 +658,7 @@ useEffect(() => {
         )}
       </div>
 
+      {/* Feed */}
       <div
         style={{
           position: "absolute",
@@ -656,12 +732,26 @@ useEffect(() => {
                 >
                   🗑 Delete
                 </button>
+                <button
+                  onClick={() => setSelectedPost(p)}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    background: "white",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Open
+                </button>
               </div>
             </div>
           ))
         )}
       </div>
 
+      {/* Composer */}
       {openComposer && (
         <div
           style={{
@@ -689,7 +779,7 @@ useEffect(() => {
                 alignItems: "center",
               }}
             >
-              <div style={{ fontWeight: 900 }}>New Post（{filterMin} min）</div>
+              <div style={{ fontWeight: 900 }}>New Post ({filterMin} min)</div>
               <button
                 onClick={() => setOpenComposer(false)}
                 style={{
@@ -717,8 +807,7 @@ useEffect(() => {
                   style={{
                     padding: 10,
                     borderRadius: 12,
-                    border:
-                      t === type ? "2px solid black" : "1px solid #ddd",
+                    border: t === type ? "2px solid black" : "1px solid #ddd",
                     background: "white",
                     cursor: "pointer",
                     fontWeight: 800,
@@ -766,6 +855,7 @@ useEffect(() => {
         </div>
       )}
 
+      {/* Edit modal */}
       {editing && (
         <div
           style={{
@@ -793,7 +883,7 @@ useEffect(() => {
                 alignItems: "center",
               }}
             >
-              <div style={{ fontWeight: 900 }}>Edit</div>
+              <div style={{ fontWeight: 900 }}>Edit Post</div>
               <button
                 onClick={() => setEditing(null)}
                 style={{
@@ -846,6 +936,10 @@ useEffect(() => {
                 padding: 10,
               }}
             />
+
+            <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
+              To change location, drag this post marker on the map, then tap Save.
+            </div>
 
             <button
               onClick={saveEdit}
