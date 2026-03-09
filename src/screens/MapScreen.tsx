@@ -26,8 +26,16 @@ const typeMeta: Record<PostType, { label: string; emoji: string }> = {
   other: { label: "Other", emoji: "…" },
 };
 
-function minutesAgo(ts: number) {
-  return Math.max(0, Math.floor((Date.now() - ts) / 60000));
+function timeAgo(ts: number) {
+  const diffMs = Date.now() - ts;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin} min ago`;
+  if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? "s" : ""} ago`;
+  return `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
 }
 
 export default function MapScreen() {
@@ -55,6 +63,7 @@ export default function MapScreen() {
   const [editing, setEditing] = useState<Post | null>(null);
   const [editText, setEditText] = useState("");
   const [editType, setEditType] = useState<PostType>("traffic");
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const [mapReady, setMapReady] = useState(false);
 
@@ -297,13 +306,7 @@ export default function MapScreen() {
             }}
           >
             <button
-              onClick={() =>
-                alert(
-                  `${typeMeta[p.type].emoji} ${typeMeta[p.type].label}\n${minutesAgo(
-                    p.createdAt
-                  )} min ago\n${p.text ?? ""}`
-                )
-              }
+              onClick={() => setSelectedPost(p)}
               style={{
                 border: "none",
                 borderRadius: 999,
@@ -320,7 +323,88 @@ export default function MapScreen() {
           </Marker>
         ))}
       </Map>
+{selectedPost && (
+  <div
+    style={{
+      position: "absolute",
+      left: 16,
+      right: 16,
+      bottom: 260,
+      zIndex: 25,
+      background: "rgba(255,255,255,0.98)",
+      borderRadius: 16,
+      padding: 14,
+      boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ fontWeight: 900 }}>
+        {typeMeta[selectedPost.type].emoji} {typeMeta[selectedPost.type].label}
+      </div>
+      <button
+        onClick={() => setSelectedPost(null)}
+        style={{
+          border: "none",
+          background: "transparent",
+          fontSize: 18,
+          cursor: "pointer",
+        }}
+      >
+        ✕
+      </button>
+    </div>
 
+    <div style={{ marginTop: 6, fontSize: 12, opacity: 0.65 }}>
+      {timeAgo(selectedPost.createdAt)}
+    </div>
+
+    <div style={{ marginTop: 8 }}>
+      {selectedPost.text || "No description"}
+    </div>
+
+    <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+      <button
+        onClick={() => {
+          startEdit(selectedPost);
+          setSelectedPost(null);
+        }}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 12,
+          border: "1px solid rgba(0,0,0,0.15)",
+          background: "white",
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        ✏️ Edit
+      </button>
+
+      <button
+        onClick={() => {
+          removePost(selectedPost);
+          setSelectedPost(null);
+        }}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 12,
+          border: "1px solid rgba(0,0,0,0.15)",
+          background: "white",
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        🗑 Delete
+      </button>
+    </div>
+  </div>
+)}
       <div
         style={{
           position: "absolute",
@@ -347,6 +431,7 @@ export default function MapScreen() {
             <option value={30}>30 min</option>
             <option value={60}>1 hour</option>
             <option value={180}>3 hours</option>
+            <option value={1440}>1 day</option>
           </select>
 
           <button
@@ -512,7 +597,7 @@ export default function MapScreen() {
                     opacity: 0.6,
                   }}
                 >
-                  {minutesAgo(p.createdAt)} min
+                  {timeAgo(p.createdAt)}
                 </div>
               </div>
 
