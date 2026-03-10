@@ -67,6 +67,7 @@ export default function MapScreen() {
   const [editText, setEditText] = useState("");
   const [editType, setEditType] = useState<PostType>("traffic");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [draggingPostId, setDraggingPostId] = useState<string | null>(null);
 
   const [mapReady, setMapReady] = useState(false);
 
@@ -214,36 +215,45 @@ export default function MapScreen() {
   }
 
   function startEdit(p: Post) {
-    setEditing(p);
-    setEditText(p.text ?? "");
-    setEditType(p.type);
-    setSelectedPost(p);
-  }
+  if (!isMine(p)) return;
+
+  setEditing(p);
+  setEditText(p.text ?? "");
+  setEditType(p.type);
+  setSelectedPost(p);
+
+  // Editを開いた直後はまだ動かさない
+  setDraggingPostId(null);
+}
 
   async function saveEdit() {
-    if (!editing) return;
+  if (!editing) return;
 
-    await updatePost(editing.id, {
-      text: editText,
-      type: editType,
-    });
+  await updatePost(editing.id, {
+    text: editText,
+    type: editType,
+  });
 
-    setEditing(null);
-  }
+  setDraggingPostId(null);
+  setEditing(null);
+}
 
   async function removePost(p: Post) {
-    const ok = confirm("Delete this post?");
-    if (!ok) return;
+  const ok = confirm("Delete this post?");
+  if (!ok) return;
 
-    await deletePost(p.id);
+  await deletePost(p.id);
 
-    if (selectedPost?.id === p.id) {
-      setSelectedPost(null);
-    }
-    if (editing?.id === p.id) {
-      setEditing(null);
-    }
+  if (selectedPost?.id === p.id) {
+    setSelectedPost(null);
   }
+  if (editing?.id === p.id) {
+    setEditing(null);
+  }
+  if (draggingPostId === p.id) {
+    setDraggingPostId(null);
+  }
+}
 
   // map load 後に TomTom layer 追加
   useEffect(() => {
@@ -340,17 +350,18 @@ export default function MapScreen() {
 
         {posts.map((p) => (
           <Marker
-            key={p.id}
-            longitude={p.lng}
-            latitude={p.lat}
-            anchor="bottom"
-            // 普段は動かせない。Edit中の投稿だけ動かせる
-            draggable={editing?.id === p.id}
-            onDragEnd={async (e) => {
-              if (editing?.id !== p.id) return;
-              await updatePostLocation(p.id, e.lngLat.lat, e.lngLat.lng);
-            }}
-          >
+  key={p.id}
+  longitude={p.lng}
+  latitude={p.lat}
+  anchor="bottom"
+  draggable={isMine(p) && draggingPostId === p.id}
+  onDragEnd={async (e) => {
+    if (!isMine(p)) return;
+    if (draggingPostId !== p.id) return;
+
+    await updatePostLocation(p.id, e.lngLat.lat, e.lngLat.lng);
+  }}
+>
             <button
               onClick={() => setSelectedPost(p)}
               style={{
@@ -358,11 +369,11 @@ export default function MapScreen() {
                 borderRadius: 999,
                 padding: "8px 10px",
                 background:
-                  editing?.id === p.id
-                    ? "rgba(255,140,0,0.9)"
-                    : "rgba(0,0,0,0.75)",
-                color: "white",
-                cursor: editing?.id === p.id ? "grab" : "pointer",
+  draggingPostId === p.id
+    ? "rgba(255,140,0,0.9)"
+    : "rgba(0,0,0,0.75)",
+color: "white",
+cursor: draggingPostId === p.id ? "grab" : "pointer",
                 fontWeight: 700,
               }}
               aria-label="post"
@@ -496,6 +507,43 @@ export default function MapScreen() {
             >
               📍 Focus
             </button>
+
+{isMine(selectedPost) && (
+  <>
+    <button
+      onClick={() => {
+        setDraggingPostId(selectedPost.id);
+      }}
+      style={{
+        padding: "9px 12px",
+        borderRadius: 12,
+        border: "1px solid rgba(0,0,0,0.15)",
+        background: "white",
+        cursor: "pointer",
+        fontWeight: 700,
+      }}
+    >
+      🟠 Move marker
+    </button>
+
+    <button
+      onClick={() => {
+        setDraggingPostId(null);
+      }}
+      style={{
+        padding: "9px 12px",
+        borderRadius: 12,
+        border: "1px solid rgba(0,0,0,0.15)",
+        background: "white",
+        cursor: "pointer",
+        fontWeight: 700,
+      }}
+    >
+      📌 Fix marker
+    </button>
+  </>
+)}
+
           </div>
         </div>
       )}
@@ -938,7 +986,7 @@ export default function MapScreen() {
             />
 
             <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>
-              To change location, drag this post marker on the map, then tap Save.
+              Tap "Move marker" in the post card, drag the marker on the map, then tap "Fix marker".
             </div>
 
             <button
