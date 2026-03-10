@@ -66,8 +66,13 @@ export default function MapScreen() {
   const [editing, setEditing] = useState<Post | null>(null);
   const [editText, setEditText] = useState("");
   const [editType, setEditType] = useState<PostType>("traffic");
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(() => {
+  const raw = localStorage.getItem("selectedPost");
+  return raw ? JSON.parse(raw) : null;
+});
   const [draggingPostId, setDraggingPostId] = useState<string | null>(null);
+  const [draftPos, setDraftPos] = useState<{ lat: number; lng: number } | null>(null);
+  
 
   const [mapReady, setMapReady] = useState(false);
 
@@ -84,25 +89,21 @@ export default function MapScreen() {
 
   // selected post id を保存
   useEffect(() => {
-    if (selectedPost?.id) {
-      localStorage.setItem("selectedPostId", selectedPost.id);
-    } else {
-      localStorage.removeItem("selectedPostId");
-    }
-  }, [selectedPost]);
+  if (selectedPost) {
+    localStorage.setItem("selectedPost", JSON.stringify(selectedPost));
+  } else {
+    localStorage.removeItem("selectedPost");
+  }
+}, [selectedPost]);
 
-  // posts 更新後に selected post を復元
-  useEffect(() => {
-    const savedId = localStorage.getItem("selectedPostId");
-    if (!savedId) return;
+useEffect(() => {
+  if (!selectedPost) return;
 
-    const found = posts.find((p) => p.id === savedId);
-    if (found) {
-      setSelectedPost(found);
-    } else {
-      setSelectedPost(null);
-    }
-  }, [posts]);
+  const found = posts.find((p) => p.id === selectedPost.id);
+  if (found) {
+    setSelectedPost(found);
+  }
+}, [posts]);
 
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current);
@@ -153,31 +154,35 @@ export default function MapScreen() {
   }, [hasCenteredOnce]);
 
   function openNewComposer() {
-    setType("traffic");
-    setText("");
-    setOpenComposer(true);
-  }
+  setType("traffic");
+  setText("");
+  setDraftPos({ lat: center.lat, lng: center.lng });
+  setOpenComposer(true);
+}
 
   async function onSubmit() {
-    try {
-      await createPost({
-        type,
-        text,
-        lat: center.lat,
-        lng: center.lng,
-        username: MY_NAME,
-        ttlMinutes: filterMin,
-      });
+  try {
+    const postLat = draftPos?.lat ?? center.lat;
+    const postLng = draftPos?.lng ?? center.lng;
 
-      // 投稿成功で閉じる
-      setText("");
-      setType("traffic");
-      setOpenComposer(false);
-    } catch (err) {
-      console.error("createPost failed:", err);
-      alert("Failed to post. Please try again.");
-    }
+    await createPost({
+      type,
+      text,
+      lat: postLat,
+      lng: postLng,
+      username: MY_NAME,
+      ttlMinutes: filterMin,
+    });
+
+    setText("");
+    setType("traffic");
+    setDraftPos(null);
+    setOpenComposer(false);
+  } catch (err) {
+    console.error("createPost failed:", err);
+    alert("Failed to post. Please try again.");
   }
+}
 
   function goMyLocation() {
     setLocErr(null);
@@ -347,6 +352,36 @@ export default function MapScreen() {
             />
           </Marker>
         )}
+
+        {openComposer && draftPos && (
+  <Marker
+    longitude={draftPos.lng}
+    latitude={draftPos.lat}
+    anchor="bottom"
+    draggable={true}
+    onDragEnd={(e) => {
+      setDraftPos({
+        lat: e.lngLat.lat,
+        lng: e.lngLat.lng,
+      });
+    }}
+  >
+    <div
+      style={{
+        background: "#2563eb",
+        color: "white",
+        padding: "8px 10px",
+        borderRadius: 999,
+        fontWeight: 800,
+        boxShadow: "0 8px 20px rgba(0,0,0,0.18)",
+        cursor: "grab",
+      }}
+      title="Drag to choose post location"
+    >
+      📍 New post
+    </div>
+  </Marker>
+)}
 
         {posts.map((p) => (
           <Marker
@@ -897,7 +932,7 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
             </button>
 
             <div style={{ marginTop: 8, fontSize: 12, opacity: 0.6 }}>
-              Location = current map center
+              Drag the blue marker to choose post location
             </div>
           </div>
         </div>
