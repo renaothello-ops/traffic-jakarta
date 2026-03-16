@@ -6,8 +6,8 @@ export type Post = {
   text?: string;
   lat: number;
   lng: number;
-  createdAt: number; // ms
-  expiresAt: number; // ms
+  createdAt: number;
+  expiresAt: number;
   imageURL?: string;
   username?: string;
 };

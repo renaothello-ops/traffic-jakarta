@@ -38,12 +38,23 @@ function timeAgo(ts: number) {
   return `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
 }
 
+type DraftState = {
+  type: PostType;
+  text: string;
+  image: string | null;
+  draftPos: { lat: number; lng: number } | null;
+};
+
+const DRAFT_STORAGE_KEY = "traffic_jakarta_draft";
+const SELECTED_POST_KEY = "traffic_jakarta_selected_post";
+const FILTER_KEY = "traffic_jakarta_filter";
+
 export default function MapScreen() {
   const mapRef = useRef<MapRef | null>(null);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [filterMin, setFilterMin] = useState<number>(() => {
-    const saved = localStorage.getItem("filterMin");
+    const saved = localStorage.getItem(FILTER_KEY);
     return saved ? Number(saved) : 10;
   });
 
@@ -53,6 +64,8 @@ export default function MapScreen() {
   const [openComposer, setOpenComposer] = useState(false);
   const [type, setType] = useState<PostType>("traffic");
   const [text, setText] = useState("");
+  const [image, setImage] = useState<string | null>(null);
+  const [draftPos, setDraftPos] = useState<{ lat: number; lng: number } | null>(null);
 
   const [searchText, setSearchText] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -66,45 +79,62 @@ export default function MapScreen() {
   const [editing, setEditing] = useState<Post | null>(null);
   const [editText, setEditText] = useState("");
   const [editType, setEditType] = useState<PostType>("traffic");
-  const [selectedPost, setSelectedPost] = useState<Post | null>(() => {
-  const raw = localStorage.getItem("selectedPost");
-  return raw ? JSON.parse(raw) : null;
-});
-  const [draggingPostId, setDraggingPostId] = useState<string | null>(null);
-  const [draftPos, setDraftPos] = useState<{ lat: number; lng: number } | null>(null);
-  
 
+  const [selectedPost, setSelectedPost] = useState<Post | null>(() => {
+    const raw = localStorage.getItem(SELECTED_POST_KEY);
+    return raw ? JSON.parse(raw) : null;
+  });
+
+  const [draggingPostId, setDraggingPostId] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
-  // 投稿一覧を現在の filter で取得
+  // 投稿一覧を filter で取得
   useEffect(() => {
     const unsub = listenActivePosts(filterMin, setPosts);
     return () => unsub();
   }, [filterMin]);
 
-  // filter を保存
+  // filter 保存
   useEffect(() => {
-    localStorage.setItem("filterMin", String(filterMin));
+    localStorage.setItem(FILTER_KEY, String(filterMin));
   }, [filterMin]);
 
-  // selected post id を保存
+  // selected post 保存
   useEffect(() => {
-  if (selectedPost) {
-    localStorage.setItem("selectedPost", JSON.stringify(selectedPost));
-  } else {
-    localStorage.removeItem("selectedPost");
-  }
-}, [selectedPost]);
+    if (selectedPost) {
+      localStorage.setItem(SELECTED_POST_KEY, JSON.stringify(selectedPost));
+    } else {
+      localStorage.removeItem(SELECTED_POST_KEY);
+    }
+  }, [selectedPost]);
 
-useEffect(() => {
-  if (!selectedPost) return;
+  // posts 更新時に最新データへ同期
+  useEffect(() => {
+    if (!selectedPost) return;
 
-  const found = posts.find((p) => p.id === selectedPost.id);
-  if (found) {
-    setSelectedPost(found);
-  }
-}, [posts]);
+    const found = posts.find((p) => p.id === selectedPost.id);
+    if (found) {
+      setSelectedPost(found);
+    } else {
+      setSelectedPost(null);
+    }
+  }, [posts]);
 
+  // draft 保存
+  useEffect(() => {
+    const draft: DraftState = {
+      type,
+      text,
+      image,
+      draftPos,
+    };
+
+    if (openComposer) {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    }
+  }, [openComposer, type, text, image, draftPos]);
+
+  // 検索suggest
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current);
 
@@ -154,35 +184,57 @@ useEffect(() => {
   }, [hasCenteredOnce]);
 
   function openNewComposer() {
-  setType("traffic");
-  setText("");
-  setDraftPos({ lat: center.lat, lng: center.lng });
-  setOpenComposer(true);
-}
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+
+    if (raw) {
+      const saved: DraftState = JSON.parse(raw);
+      setType(saved.type ?? "traffic");
+      setText(saved.text ?? "");
+      setImage(saved.image ?? null);
+      setDraftPos(saved.draftPos ?? { lat: center.lat, lng: center.lng });
+    } else {
+      setType("traffic");
+      setText("");
+      setImage(null);
+      setDraftPos({
+        lat: center.lat,
+        lng: center.lng,
+      });
+    }
+
+    setOpenComposer(true);
+  }
+
+  function resetDraft() {
+    setType("traffic");
+    setText("");
+    setImage(null);
+    setDraftPos(null);
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  }
 
   async function onSubmit() {
-  try {
-    const postLat = draftPos?.lat ?? center.lat;
-    const postLng = draftPos?.lng ?? center.lng;
+    try {
+      const postLat = draftPos?.lat ?? center.lat;
+      const postLng = draftPos?.lng ?? center.lng;
 
-    await createPost({
-      type,
-      text,
-      lat: postLat,
-      lng: postLng,
-      username: MY_NAME,
-      ttlMinutes: filterMin,
-    });
+      await createPost({
+        type,
+        text,
+        lat: postLat,
+        lng: postLng,
+        imageURL: image ?? undefined,
+        username: MY_NAME,
+        ttlMinutes: filterMin,
+      });
 
-    setText("");
-    setType("traffic");
-    setDraftPos(null);
-    setOpenComposer(false);
-  } catch (err) {
-    console.error("createPost failed:", err);
-    alert("Failed to post. Please try again.");
+      resetDraft();
+      setOpenComposer(false);
+    } catch (err) {
+      console.error("createPost failed:", err);
+      alert("Failed to post. Please try again.");
+    }
   }
-}
 
   function goMyLocation() {
     setLocErr(null);
@@ -220,45 +272,43 @@ useEffect(() => {
   }
 
   function startEdit(p: Post) {
-  if (!isMine(p)) return;
+    if (!isMine(p)) return;
 
-  setEditing(p);
-  setEditText(p.text ?? "");
-  setEditType(p.type);
-  setSelectedPost(p);
-
-  // Editを開いた直後はまだ動かさない
-  setDraggingPostId(null);
-}
-
-  async function saveEdit() {
-  if (!editing) return;
-
-  await updatePost(editing.id, {
-    text: editText,
-    type: editType,
-  });
-
-  setDraggingPostId(null);
-  setEditing(null);
-}
-
-  async function removePost(p: Post) {
-  const ok = confirm("Delete this post?");
-  if (!ok) return;
-
-  await deletePost(p.id);
-
-  if (selectedPost?.id === p.id) {
-    setSelectedPost(null);
-  }
-  if (editing?.id === p.id) {
-    setEditing(null);
-  }
-  if (draggingPostId === p.id) {
+    setEditing(p);
+    setEditText(p.text ?? "");
+    setEditType(p.type);
+    setSelectedPost(p);
     setDraggingPostId(null);
   }
-}
+
+  async function saveEdit() {
+    if (!editing) return;
+
+    await updatePost(editing.id, {
+      text: editText,
+      type: editType,
+    });
+
+    setDraggingPostId(null);
+    setEditing(null);
+  }
+
+  async function removePost(p: Post) {
+    const ok = confirm("Delete this post?");
+    if (!ok) return;
+
+    await deletePost(p.id);
+
+    if (selectedPost?.id === p.id) {
+      setSelectedPost(null);
+    }
+    if (editing?.id === p.id) {
+      setEditing(null);
+    }
+    if (draggingPostId === p.id) {
+      setDraggingPostId(null);
+    }
+  }
 
   // map load 後に TomTom layer 追加
   useEffect(() => {
@@ -333,7 +383,6 @@ useEffect(() => {
           setZoom(e.viewState.zoom);
         }}
         onLoad={() => {
-          console.log("map loaded");
           setMapReady(true);
         }}
       >
@@ -354,49 +403,49 @@ useEffect(() => {
         )}
 
         {openComposer && draftPos && (
-  <Marker
-    longitude={draftPos.lng}
-    latitude={draftPos.lat}
-    anchor="bottom"
-    draggable={true}
-    onDragEnd={(e) => {
-      setDraftPos({
-        lat: e.lngLat.lat,
-        lng: e.lngLat.lng,
-      });
-    }}
-  >
-    <div
-      style={{
-        background: "#2563eb",
-        color: "white",
-        padding: "8px 10px",
-        borderRadius: 999,
-        fontWeight: 800,
-        boxShadow: "0 8px 20px rgba(0,0,0,0.18)",
-        cursor: "grab",
-      }}
-      title="Drag to choose post location"
-    >
-      📍 New post
-    </div>
-  </Marker>
-)}
+          <Marker
+            longitude={draftPos.lng}
+            latitude={draftPos.lat}
+            anchor="bottom"
+            draggable={true}
+            onDragEnd={(e) => {
+              setDraftPos({
+                lat: e.lngLat.lat,
+                lng: e.lngLat.lng,
+              });
+            }}
+          >
+            <div
+              style={{
+                background: "#2563eb",
+                color: "white",
+                padding: "10px 12px",
+                borderRadius: 999,
+                fontWeight: 800,
+                boxShadow: "0 8px 20px rgba(0,0,0,0.18)",
+                cursor: "grab",
+              }}
+              title="Drag to choose post location"
+            >
+              📍 New post
+            </div>
+          </Marker>
+        )}
 
         {posts.map((p) => (
           <Marker
-  key={p.id}
-  longitude={p.lng}
-  latitude={p.lat}
-  anchor="bottom"
-  draggable={isMine(p) && draggingPostId === p.id}
-  onDragEnd={async (e) => {
-    if (!isMine(p)) return;
-    if (draggingPostId !== p.id) return;
+            key={p.id}
+            longitude={p.lng}
+            latitude={p.lat}
+            anchor="bottom"
+            draggable={isMine(p) && draggingPostId === p.id}
+            onDragEnd={async (e) => {
+              if (!isMine(p)) return;
+              if (draggingPostId !== p.id) return;
 
-    await updatePostLocation(p.id, e.lngLat.lat, e.lngLat.lng);
-  }}
->
+              await updatePostLocation(p.id, e.lngLat.lat, e.lngLat.lng);
+            }}
+          >
             <button
               onClick={() => setSelectedPost(p)}
               style={{
@@ -404,19 +453,24 @@ useEffect(() => {
                 borderRadius: 999,
                 padding: "8px 10px",
                 background:
-  draggingPostId === p.id
-    ? "rgba(255,140,0,0.9)"
-    : "rgba(0,0,0,0.75)",
-color: "white",
-cursor: draggingPostId === p.id ? "grab" : "pointer",
+                  draggingPostId === p.id
+                    ? "rgba(255,140,0,0.9)"
+                    : p.type === "accident"
+                    ? "#ef4444"
+                    : p.type === "traffic"
+                    ? "#f59e0b"
+                    : p.type === "construction"
+                    ? "#f97316"
+                    : p.type === "weather"
+                    ? "#3b82f6"
+                    : p.type === "user"
+                    ? "#8b5cf6"
+                    : "rgba(0,0,0,0.75)",
+                color: "white",
+                cursor: draggingPostId === p.id ? "grab" : "pointer",
                 fontWeight: 700,
               }}
               aria-label="post"
-              title={
-                editing?.id === p.id
-                  ? "Drag to update location"
-                  : "Open post"
-              }
             >
               {typeMeta[p.type].emoji}
             </button>
@@ -424,7 +478,6 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
         ))}
       </Map>
 
-      {/* 本物アプリっぽい Bottom Sheet */}
       {selectedPost && (
         <div
           style={{
@@ -481,6 +534,19 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
             {selectedPost.text || "No description"}
           </div>
 
+          {selectedPost.imageURL && (
+            <img
+              src={selectedPost.imageURL}
+              style={{
+                width: "100%",
+                marginTop: 10,
+                borderRadius: 12,
+                objectFit: "cover",
+                maxHeight: 240,
+              }}
+            />
+          )}
+
           {editing?.id === selectedPost.id && (
             <div
               style={{
@@ -490,7 +556,7 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
                 fontWeight: 700,
               }}
             >
-              Drag this marker on the map, then tap Save.
+              Tap "Move marker", drag the marker, then tap "Fix marker".
             </div>
           )}
 
@@ -543,47 +609,62 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
               📍 Focus
             </button>
 
-{isMine(selectedPost) && (
-  <>
-    <button
-      onClick={() => {
-        setDraggingPostId(selectedPost.id);
-      }}
-      style={{
-        padding: "9px 12px",
-        borderRadius: 12,
-        border: "1px solid rgba(0,0,0,0.15)",
-        background: "white",
-        cursor: "pointer",
-        fontWeight: 700,
-      }}
-    >
-      🟠 Move marker
-    </button>
+            {isMine(selectedPost) && (
+              <>
+                <button
+                  onClick={() => {
+                    setDraggingPostId(selectedPost.id);
+                  }}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    background: "white",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  🟠 Move marker
+                </button>
 
-    <button
-      onClick={() => {
-        setDraggingPostId(null);
-      }}
-      style={{
-        padding: "9px 12px",
-        borderRadius: 12,
-        border: "1px solid rgba(0,0,0,0.15)",
-        background: "white",
-        cursor: "pointer",
-        fontWeight: 700,
-      }}
-    >
-      📌 Fix marker
-    </button>
-  </>
-)}
+                <button
+                  onClick={() => {
+                    setDraggingPostId(null);
+                  }}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,0.15)",
+                    background: "white",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  📌 Fix marker
+                </button>
+              </>
+            )}
 
+            <button
+              onClick={() => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedPost.lat},${selectedPost.lng}`;
+                window.open(url, "_blank");
+              }}
+              style={{
+                padding: "9px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.15)",
+                background: "white",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              🧭 Navigate
+            </button>
           </div>
         </div>
       )}
 
-      {/* Top bar */}
       <div
         style={{
           position: "absolute",
@@ -595,7 +676,7 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
           zIndex: 10,
         }}
       >
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <select
             value={filterMin}
             onChange={(e) => setFilterMin(Number(e.target.value))}
@@ -626,7 +707,18 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
             ➕ Post
           </button>
 
-          <div style={{ flex: 1 }} />
+          <div
+            style={{
+              padding: "8px 10px",
+              borderRadius: 12,
+              background: "rgba(255,255,255,0.95)",
+              border: "1px solid #ddd",
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+          >
+            Posts: {posts.length}
+          </div>
         </div>
 
         <div style={{ position: "relative" }}>
@@ -701,7 +793,6 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
         </div>
       </div>
 
-      {/* Current location button */}
       <div
         style={{
           position: "absolute",
@@ -741,7 +832,6 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
         )}
       </div>
 
-      {/* Feed */}
       <div
         style={{
           position: "absolute",
@@ -788,7 +878,7 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
                 <div style={{ marginTop: 6, opacity: 0.5 }}>(no text)</div>
               )}
 
-              <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+              <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
                   onClick={() => startEdit(p)}
                   style={{
@@ -834,7 +924,6 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
         )}
       </div>
 
-      {/* Composer */}
       {openComposer && (
         <div
           style={{
@@ -864,7 +953,10 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
             >
               <div style={{ fontWeight: 900 }}>New Post ({filterMin} min)</div>
               <button
-                onClick={() => setOpenComposer(false)}
+                onClick={() => {
+                  setOpenComposer(false);
+                  resetDraft();
+                }}
                 style={{
                   border: "none",
                   background: "transparent",
@@ -915,6 +1007,36 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
               }}
             />
 
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = () => {
+                  setImage(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+              }}
+              style={{ marginTop: 10 }}
+            />
+
+            {image && (
+              <img
+                src={image}
+                style={{
+                  width: "100%",
+                  marginTop: 10,
+                  borderRadius: 12,
+                  objectFit: "cover",
+                  maxHeight: 220,
+                }}
+              />
+            )}
+
             <button
               onClick={onSubmit}
               style={{
@@ -928,7 +1050,7 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
                 fontWeight: 900,
               }}
             >
-              Post here (map center)
+              Post here
             </button>
 
             <div style={{ marginTop: 8, fontSize: 12, opacity: 0.6 }}>
@@ -938,7 +1060,6 @@ cursor: draggingPostId === p.id ? "grab" : "pointer",
         </div>
       )}
 
-      {/* Edit modal */}
       {editing && (
         <div
           style={{
