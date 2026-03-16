@@ -1,5 +1,3 @@
-import { db } from "./firebase";
-import type { Post, PostType } from "../../types";
 import {
   addDoc,
   collection,
@@ -8,52 +6,15 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   updateDoc,
   where,
 } from "firebase/firestore";
+import { db } from "./firebase";
+import type { Post, PostType } from "../../types";
 
 const col = collection(db, "posts");
 
-// ==========================
-// ✅ Listen (既存仕様のまま)
-// ==========================
-export function listenActivePosts(minutes: number, cb: (posts: Post[]) => void) {
-  const now = Date.now();
-  const limit = now - minutes * 60_000;
-
-  // createdAt >= limit AND orderBy createdAt desc
-  const qy = query(col, where("createdAt", ">=", limit), orderBy("createdAt", "desc"));
-
-  return onSnapshot(qy, (snap) => {
-    const list: Post[] = [];
-    snap.forEach((d) => {
-      const data = d.data() as any;
-
-      const p: Post = {
-        id: d.id,
-        type: data.type,
-        text: data.text,
-        lat: data.lat,
-        lng: data.lng,
-        createdAt: data.createdAt,
-        expiresAt: data.expiresAt,
-        imageURL: data.imageURL,
-        username: data.username ?? "Anonymous",
-      };
-
-      // expiresAt が未来のものだけ返す（既存仕様のまま）
-      if (typeof p.expiresAt === "number" && p.expiresAt >= Date.now()) {
-        list.push(p);
-      }
-    });
-
-    cb(list);
-  });
-}
-
-// ==========================
-// ✅ Create (既存仕様のまま)
-// ==========================
 export async function createPost(input: {
   type: PostType;
   text?: string;
@@ -61,10 +22,11 @@ export async function createPost(input: {
   lng: number;
   imageURL?: string;
   username?: string;
-  ttlMinutes: number;
+  ttlMinutes?: number;
 }) {
   const now = Date.now();
-  const expiresAt = now + 10 * 60_000;
+  const ttl = input.ttlMinutes ?? 10;
+  const expiresAt = now + ttl * 60_000;
 
   await addDoc(col, {
     type: input.type,
@@ -75,36 +37,84 @@ export async function createPost(input: {
     username: input.username ?? "Anonymous",
     createdAt: now,
     expiresAt,
+    createdAtServer: serverTimestamp(),
   });
 }
 
-// ==========================
-// ✅ Update (追加：編集)
-// ==========================
+export function listenActivePosts(
+  filterMin: number,
+  callback: (posts: Post[]) => void
+) {
+  const now = Date.now();
+
+  // 「消えていない投稿」を取る
+  const q = query(
+    col,
+    where("expiresAt", ">", now - 24 * 60 * 60 * 1000),
+    orderBy("expiresAt", "desc")
+  );
+
+  return onSnapshot(q, (snap) => {
+    const current = Date.now();
+
+    const rows: Post[] = snap.docs
+      .map((d) => {
+        const data = d.data() as any;
+
+        return {
+          id: d.id,
+          type: data.type ?? "other",
+          text: data.text ?? "",
+          lat: Number(data.lat ?? 0),
+          lng: Number(data.lng ?? 0),
+          createdAt: Number(data.createdAt ?? current),
+          expiresAt: Number(data.expiresAt ?? current),
+          imageURL: data.imageURL ?? "",
+          username: data.username ?? "Anonymous",
+        };
+      })
+      // まだ有効な投稿だけ
+      .filter((p) => p.expiresAt > current)
+      // フィルター時間内だけ表示
+      .filter((p) => current - p.createdAt <= filterMin * 60_000)
+      // 新しい順
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    callback(rows);
+  });
+}
+
 export async function updatePost(
   id: string,
-  patch: Partial<Pick<Post, "text" | "type" | "lat" | "lng" | "imageURL" | "username">>
+  updates: {
+    text?: string;
+    type?: PostType;
+    imageURL?: string;
+  }
 ) {
-  await updateDoc(doc(db, "posts", id), {
-    ...patch,
-    updatedAt: Date.now(),
+  const ref = doc(db, "posts", id);
+
+  await updateDoc(ref, {
+    ...(updates.text !== undefined ? { text: updates.text } : {}),
+    ...(updates.type !== undefined ? { type: updates.type } : {}),
+    ...(updates.imageURL !== undefined ? { imageURL: updates.imageURL } : {}),
   });
 }
 
-// ==========================
-// ✅ Delete (追加：削除)
-// ==========================
-export async function deletePost(id: string) {
-  await deleteDoc(doc(db, "posts", id));
-}
-// ==========================
-// ✅ Move marker (追加：位置だけ更新)
-// ==========================
-export async function updatePostLocation(id: string, lat: number, lng: number) {
-  await updateDoc(doc(db, "posts", id), {
+export async function updatePostLocation(
+  id: string,
+  lat: number,
+  lng: number
+) {
+  const ref = doc(db, "posts", id);
+
+  await updateDoc(ref, {
     lat,
     lng,
-    updatedAt: Date.now(),
   });
 }
 
+export async function deletePost(id: string) {
+  const ref = doc(db, "posts", id);
+  await deleteDoc(ref);
+}

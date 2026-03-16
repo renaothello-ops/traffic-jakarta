@@ -717,7 +717,7 @@ export default function MapScreen() {
               fontWeight: 700,
             }}
           >
-            Posts: {posts.length}
+            Posts: {feed.length}
           </div>
         </div>
 
