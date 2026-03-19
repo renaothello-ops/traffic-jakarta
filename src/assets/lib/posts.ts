@@ -27,17 +27,28 @@ export async function createPost(input: {
   const ttl = input.ttlMinutes ?? 10;
   const expiresAt = now + ttl * 60_000;
 
-  await addDoc(col, {
-    type: input.type,
-    text: input.text ?? "",
-    lat: input.lat,
-    lng: input.lng,
-    imageURL: input.imageURL ?? "",
-    username: input.username ?? "Anonymous",
-    createdAt: now,
-    expiresAt,
-    createdAtServer: serverTimestamp(),
-  });
+  try {
+    const ref = await addDoc(col, {
+      type: input.type,
+      text: input.text ?? "",
+      lat: input.lat,
+      lng: input.lng,
+      imageURL: input.imageURL ?? "",
+      username: input.username ?? "Anonymous",
+      createdAt: now,
+      expiresAt,
+      createdAtServer: serverTimestamp(),
+    });
+
+    console.log("[createPost] saved:", ref.id, {
+      createdAt: now,
+      expiresAt,
+    });
+  } catch (error) {
+    console.error("[createPost] failed:", error);
+    alert("Post save failed. Check Console.");
+    throw error;
+  }
 }
 
 export function listenActivePosts(
