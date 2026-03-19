@@ -8,7 +8,6 @@ import {
   query,
   serverTimestamp,
   updateDoc,
-  where,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Post, PostType } from "../../types";
@@ -45,12 +44,7 @@ export function listenActivePosts(
   _filterMin: number,
   callback: (posts: Post[]) => void
 ) {
-  // ここでは「まだ期限が切れていない投稿」だけを購読
-  const q = query(
-    col,
-    where("expiresAt", ">", Date.now()),
-    orderBy("expiresAt", "asc")
-  );
+  const q = query(col, orderBy("createdAt", "desc"));
 
   let latestRows: Post[] = [];
 
@@ -58,39 +52,54 @@ export function listenActivePosts(
     const now = Date.now();
 
     const visibleRows = latestRows
-      .filter((p) => p.expiresAt > now)
+      .filter((p) => Number(p.expiresAt ?? 0) > now)
       .sort((a, b) => b.createdAt - a.createdAt);
 
     callback(visibleRows);
   };
 
-  const unsub = onSnapshot(q, (snap) => {
-    const current = Date.now();
+  const unsub = onSnapshot(
+    q,
+    (snap) => {
+      const current = Date.now();
 
-    latestRows = snap.docs.map((d) => {
-      const data = d.data() as any;
+      latestRows = snap.docs.map((d) => {
+        const data = d.data() as any;
 
-      return {
-        id: d.id,
-        type: (data.type ?? "other") as PostType,
-        text: data.text ?? "",
-        lat: Number(data.lat ?? 0),
-        lng: Number(data.lng ?? 0),
-        createdAt: Number(data.createdAt ?? current),
-        expiresAt: Number(data.expiresAt ?? current + 10 * 60_000),
-        imageURL: data.imageURL ?? "",
-        username: data.username ?? "Anonymous",
-      };
-    });
+        return {
+          id: d.id,
+          type: (data.type ?? "other") as PostType,
+          text: data.text ?? "",
+          lat: Number(data.lat ?? 0),
+          lng: Number(data.lng ?? 0),
+          createdAt: Number(data.createdAt ?? current),
+          expiresAt: Number(data.expiresAt ?? 0),
+          imageURL: data.imageURL ?? "",
+          username: data.username ?? "Anonymous",
+        };
+      });
 
-    emit();
-  });
+      console.log(
+        "[listenActivePosts] all docs:",
+        latestRows.map((p) => ({
+          id: p.id,
+          text: p.text,
+          createdAt: p.createdAt,
+          expiresAt: p.expiresAt,
+          expired: p.expiresAt <= Date.now(),
+        }))
+      );
 
-  // Firestoreは「時間が来ただけ」では再通知しないので、
-  // 定期的に再計算して期限切れ投稿を画面から消す
+      emit();
+    },
+    (error) => {
+      console.error("[listenActivePosts] onSnapshot error:", error);
+    }
+  );
+
   const timer = window.setInterval(() => {
     emit();
-  }, 30_000);
+  }, 15_000);
 
   return () => {
     unsub();
