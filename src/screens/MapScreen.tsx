@@ -90,9 +90,9 @@ export default function MapScreen() {
 
   // 投稿一覧を filter で取得
   useEffect(() => {
-    const unsub = listenActivePosts(0, setPosts);
-    return () => unsub();
-  }, [filterMin]);
+  const unsub = listenActivePosts(0, setPosts);
+  return () => unsub();
+}, []);
 
   // filter 保存
   useEffect(() => {
@@ -152,6 +152,7 @@ export default function MapScreen() {
     }, 300);
   }, [searchText]);
 
+  console.log("STATE posts:", posts);
   const feed = useMemo(() => posts.slice(0, 50), [posts]);
 
   // 初回だけ現在地へ
