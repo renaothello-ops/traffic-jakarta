@@ -90,7 +90,7 @@ export default function MapScreen() {
 
   // 投稿一覧を filter で取得
   useEffect(() => {
-    const unsub = listenActivePosts(filterMin, setPosts);
+    const unsub = listenActivePosts(0, setPosts);
     return () => unsub();
   }, [filterMin]);
 
