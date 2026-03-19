@@ -1,4 +1,10 @@
-export type PostType = "accident" | "traffic" | "construction" | "weather" | "user" | "other";
+export type PostType =
+  | "accident"
+  | "traffic"
+  | "construction"
+  | "weather"
+  | "user"
+  | "other";
 
 export type Post = {
   id: string;

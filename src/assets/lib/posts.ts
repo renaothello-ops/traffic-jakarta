@@ -42,46 +42,60 @@ export async function createPost(input: {
 }
 
 export function listenActivePosts(
-  filterMin: number,
+  _filterMin: number,
   callback: (posts: Post[]) => void
 ) {
-  const now = Date.now();
-
-  // 「消えていない投稿」を取る
+  // ここでは「まだ期限が切れていない投稿」だけを購読
   const q = query(
     col,
-    where("expiresAt", ">", now - 24 * 60 * 60 * 1000),
-    orderBy("expiresAt", "desc")
+    where("expiresAt", ">", Date.now()),
+    orderBy("expiresAt", "asc")
   );
 
-  return onSnapshot(q, (snap) => {
-    const current = Date.now();
+  let latestRows: Post[] = [];
 
-    const rows: Post[] = snap.docs
-      .map((d) => {
-        const data = d.data() as any;
+  const emit = () => {
+    const now = Date.now();
 
-        return {
-          id: d.id,
-          type: data.type ?? "other",
-          text: data.text ?? "",
-          lat: Number(data.lat ?? 0),
-          lng: Number(data.lng ?? 0),
-          createdAt: Number(data.createdAt ?? current),
-          expiresAt: Number(data.expiresAt ?? current),
-          imageURL: data.imageURL ?? "",
-          username: data.username ?? "Anonymous",
-        };
-      })
-      // まだ有効な投稿だけ
-      .filter((p) => p.expiresAt > current)
-      // フィルター時間内だけ表示
-      .filter((p) => current - p.createdAt <= filterMin * 60_000)
-      // 新しい順
+    const visibleRows = latestRows
+      .filter((p) => p.expiresAt > now)
       .sort((a, b) => b.createdAt - a.createdAt);
 
-    callback(rows);
+    callback(visibleRows);
+  };
+
+  const unsub = onSnapshot(q, (snap) => {
+    const current = Date.now();
+
+    latestRows = snap.docs.map((d) => {
+      const data = d.data() as any;
+
+      return {
+        id: d.id,
+        type: (data.type ?? "other") as PostType,
+        text: data.text ?? "",
+        lat: Number(data.lat ?? 0),
+        lng: Number(data.lng ?? 0),
+        createdAt: Number(data.createdAt ?? current),
+        expiresAt: Number(data.expiresAt ?? current + 10 * 60_000),
+        imageURL: data.imageURL ?? "",
+        username: data.username ?? "Anonymous",
+      };
+    });
+
+    emit();
   });
+
+  // Firestoreは「時間が来ただけ」では再通知しないので、
+  // 定期的に再計算して期限切れ投稿を画面から消す
+  const timer = window.setInterval(() => {
+    emit();
+  }, 30_000);
+
+  return () => {
+    unsub();
+    window.clearInterval(timer);
+  };
 }
 
 export async function updatePost(
