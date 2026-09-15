@@ -1,0 +1,352 @@
+rules_version = '2';
+
+// Traffic Jakarta — production Firestore security rules.
+// Deploy via: firebase deploy --only firestore:rules
+// Verify in Firebase Console → Firestore Database → Rules tab.
+//
+// Aggregate counters (confirmCount, denyCount, verified) are NOT client-writable.
+// Vote subcollections are the source of truth. Use a Cloud Function to maintain
+// denormalized counters if the map UI needs them at scale.
+//
+// Publish manually: Firebase Console → Firestore Database → Rules → Publish
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isOwner(ownerUid) {
+      return isSignedIn()
+        && ownerUid is string
+        && ownerUid.size() > 0
+        && request.auth.uid == ownerUid;
+    }
+
+    function hasStoredOwner(data) {
+      return data.keys().hasAll(['ownerUid'])
+        && data.ownerUid is string
+        && data.ownerUid.size() > 0;
+    }
+
+    function validLat(lat) {
+      return lat is number && lat >= -90 && lat <= 90;
+    }
+
+    function validLng(lng) {
+      return lng is number && lng >= -180 && lng <= 180;
+    }
+
+    function validOptionalImageURL(data) {
+      return !data.keys().hasAny(['imageURL'])
+        || (data.imageURL is string && data.imageURL.size() <= 1500000);
+    }
+
+    function validPostType(type) {
+      return type in [
+        'accident', 'road_closed', 'heavy_traffic', 'flooded', 'construction',
+        'car_passable', 'motorcycle_only', 'hazard', 'other',
+        // Legacy values — readable on map; not accepted on create/update
+        'traffic', 'police', 'flood'
+      ];
+    }
+
+    function validNewPostType(type) {
+      return type in [
+        'accident', 'road_closed', 'heavy_traffic', 'flooded', 'construction',
+        'car_passable', 'motorcycle_only', 'hazard', 'other'
+      ];
+    }
+
+    function validFloodDepth(depth) {
+      return depth in ['lt10', '10to30', '30to50', 'gt50', 'unknown'];
+    }
+
+    function validFloodVehicleAccess(access) {
+      return access in [
+        'car_passable', 'suv_caution', 'motorcycle_passable', 'not_passable'
+      ];
+    }
+
+    function validPostFloodFields(data) {
+      return (!data.keys().hasAny(['floodDepth']) || validFloodDepth(data.floodDepth))
+        && (!data.keys().hasAny(['floodVehicleAccess'])
+          || validFloodVehicleAccess(data.floodVehicleAccess));
+    }
+
+    function validPostCoreFields(data) {
+      return validNewPostType(data.type)
+        && data.text is string
+        && data.text.size() <= 500
+        && validLat(data.lat)
+        && validLng(data.lng)
+        && data.username is string
+        && data.username.size() <= 120
+        && validOptionalImageURL(data)
+        && validPostFloodFields(data);
+    }
+
+    // Updates may keep legacy stored types (traffic, police, flood) on old documents.
+    function validPostFieldsForUpdate(data) {
+      return validPostType(data.type)
+        && data.text is string
+        && data.text.size() <= 500
+        && validLat(data.lat)
+        && validLng(data.lng)
+        && validOptionalImageURL(data)
+        && validPostFloodFields(data);
+    }
+
+    function validPostCreateKeys() {
+      return request.resource.data.keys().hasOnly([
+        'type', 'text', 'lat', 'lng', 'ownerUid', 'username', 'createdAt',
+        'imageURL', 'floodDepth', 'floodVehicleAccess', 'createdAtServer'
+      ]);
+    }
+
+    function validPostCreate() {
+      return isSignedIn()
+        && validPostCreateKeys()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt is number
+        && validPostCoreFields(request.resource.data);
+    }
+
+    function postImmutableFieldsUnchanged() {
+      return request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.get('confirmCount', 0)
+            == resource.data.get('confirmCount', 0)
+        && request.resource.data.get('denyCount', 0)
+            == resource.data.get('denyCount', 0)
+        && request.resource.data.get('createdAtServer', null)
+            == resource.data.get('createdAtServer', null);
+    }
+
+    function validPostOwnerUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid)
+        && postImmutableFieldsUnchanged()
+        && changed.hasOnly([
+          'type', 'text', 'lat', 'lng', 'imageURL', 'floodDepth', 'floodVehicleAccess'
+        ])
+        && validPostFieldsForUpdate(request.resource.data);
+    }
+
+    function validVoteWrite() {
+      return request.resource.data.keys().hasOnly([
+        'vote', 'voterId', 'createdAt', 'createdAtServer'
+      ])
+        && request.resource.data.voterId == request.auth.uid
+        && request.resource.data.vote in ['confirm', 'deny']
+        && request.resource.data.createdAt is number;
+    }
+
+    function validCommentCreate() {
+      return request.resource.data.keys().hasOnly([
+        'text', 'username', 'authorUid', 'createdAt', 'createdAtServer'
+      ])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 280
+        && request.resource.data.username is string
+        && request.resource.data.username.size() <= 120
+        && request.resource.data.createdAt is number;
+    }
+
+    function validCommentUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorUid == resource.data.authorUid
+        && changed.hasOnly(['text'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 280;
+    }
+
+    function validUserWriteKeys() {
+      return request.resource.data.keys().hasOnly([
+        'displayName', 'photoURL', 'email', 'licensePlate',
+        'ganjilGenapEnabled', 'createdAt', 'updatedAt'
+      ]);
+    }
+
+    function validUserWrite() {
+      return validUserWriteKeys()
+        && (!request.resource.data.keys().hasAny(['displayName'])
+          || (request.resource.data.displayName is string
+            && request.resource.data.displayName.size() <= 120))
+        && (!request.resource.data.keys().hasAny(['photoURL'])
+          || (request.resource.data.photoURL is string
+            && request.resource.data.photoURL.size() <= 2048))
+        && (!request.resource.data.keys().hasAny(['email'])
+          || (request.resource.data.email is string
+            && request.resource.data.email.size() <= 320))
+        && (!request.resource.data.keys().hasAny(['licensePlate'])
+          || (request.resource.data.licensePlate is string
+            && request.resource.data.licensePlate.size() <= 32))
+        && (!request.resource.data.keys().hasAny(['ganjilGenapEnabled'])
+          || request.resource.data.ganjilGenapEnabled is bool)
+        && (!request.resource.data.keys().hasAny(['createdAt'])
+          || request.resource.data.createdAt is number)
+        && (!request.resource.data.keys().hasAny(['updatedAt'])
+          || request.resource.data.updatedAt is number);
+    }
+
+    function validRoadAccess(access) {
+      return access in [
+        'cars', 'motorcycles', 'motorcycle_only', 'restricted', 'private'
+      ];
+    }
+
+    function validCommunityRoadCreateKeys() {
+      return request.resource.data.keys().hasOnly([
+        'name', 'description', 'access', 'coordinates', 'imageURL',
+        'ownerUid', 'username', 'createdAt', 'createdAtServer'
+      ]);
+    }
+
+    function validCommunityRoadCreate() {
+      return isSignedIn()
+        && validCommunityRoadCreateKeys()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt is number
+        && validRoadAccess(request.resource.data.access)
+        && request.resource.data.coordinates is list
+        && request.resource.data.coordinates.size() >= 2
+        && request.resource.data.coordinates.size() <= 500
+        && request.resource.data.username is string
+        && request.resource.data.username.size() <= 120
+        && (!request.resource.data.keys().hasAny(['name'])
+          || (request.resource.data.name is string
+            && request.resource.data.name.size() <= 120))
+        && (!request.resource.data.keys().hasAny(['description'])
+          || (request.resource.data.description is string
+            && request.resource.data.description.size() <= 500))
+        && validOptionalImageURL(request.resource.data);
+    }
+
+    function roadImmutableFieldsUnchanged() {
+      return request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.get('confirmCount', 0)
+            == resource.data.get('confirmCount', 0)
+        && request.resource.data.get('denyCount', 0)
+            == resource.data.get('denyCount', 0)
+        && request.resource.data.get('verified', false)
+            == resource.data.get('verified', false)
+        && request.resource.data.get('createdAtServer', null)
+            == resource.data.get('createdAtServer', null);
+    }
+
+    function validCommunityRoadOwnerUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid)
+        && roadImmutableFieldsUnchanged()
+        && changed.hasOnly([
+          'name', 'description', 'access', 'coordinates', 'imageURL'
+        ])
+        && validRoadAccess(request.resource.data.access)
+        && request.resource.data.coordinates is list
+        && request.resource.data.coordinates.size() >= 2
+        && request.resource.data.coordinates.size() <= 500
+        && validOptionalImageURL(request.resource.data);
+    }
+
+    // -------------------------------------------------------------------------
+    // users/{uid} — private profile, owner only
+    // -------------------------------------------------------------------------
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+
+      allow create: if isSelf(userId) && validUserWrite();
+
+      allow update: if isSelf(userId)
+        && validUserWrite()
+        && request.resource.data.get('createdAt', resource.data.get('createdAt', 0))
+            == resource.data.get('createdAt', 0);
+
+      allow delete: if isSelf(userId);
+    }
+
+    // -------------------------------------------------------------------------
+    // posts/{postId}
+    // -------------------------------------------------------------------------
+
+    match /posts/{postId} {
+      // Public map — includes legacy docs without ownerUid
+      allow read: if true;
+
+      allow create: if validPostCreate();
+
+      // Legacy posts without ownerUid: read-only (no edit/delete)
+      allow update: if validPostOwnerUpdate();
+
+      allow delete: if hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid);
+
+      match /votes/{voterId} {
+        allow read: if true;
+
+        allow create: if isSelf(voterId) && validVoteWrite();
+
+        allow update: if isSelf(voterId)
+          && validVoteWrite()
+          && request.resource.data.voterId == resource.data.voterId;
+
+        allow delete: if isSelf(voterId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+
+        allow create: if isSignedIn() && validCommentCreate();
+
+        allow update: if isSignedIn() && validCommentUpdate();
+
+        allow delete: if isSignedIn()
+          && resource.data.authorUid == request.auth.uid;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // communityRoads/{roadId}
+    // -------------------------------------------------------------------------
+
+    match /communityRoads/{roadId} {
+      allow read: if true;
+
+      allow create: if validCommunityRoadCreate();
+
+      allow update: if validCommunityRoadOwnerUpdate();
+
+      allow delete: if hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid);
+
+      match /votes/{voterId} {
+        allow read: if true;
+
+        allow create: if isSelf(voterId) && validVoteWrite();
+
+        allow update: if isSelf(voterId)
+          && validVoteWrite()
+          && request.resource.data.voterId == resource.data.voterId;
+
+        allow delete: if isSelf(voterId);
+      }
+    }
+  }
+}
