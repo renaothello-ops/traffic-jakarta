@@ -2,18 +2,66 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="google-site-verification" content="hHbZfqEFKLNv9h8LgAvPX1rRzWxY3nWFSlVAvuxw8QI" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- 👇 ここだけ変更 -->
-    <title>Jakarta Traffic Map | Real-time Traffic & Accident Info</title>
-
-    <!-- 👇 これを追加 -->
-    <meta name="description" content="Real-time traffic and accident map in Jakarta. Share and view live traffic updates instantly." />
-
+    <title>Traffic Jakarta | Live Traffic Map &amp; Community Reports</title>
+    <meta
+      name="description"
+      content="Traffic Jakarta provides live traffic information, interactive maps, community road reports, and route planning for Jakarta, Indonesia."
+    />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="%VITE_PUBLIC_SITE_URL%/" />
+    <link rel="alternate" hreflang="en" href="%VITE_PUBLIC_SITE_URL%/home.html" />
+    <link rel="alternate" hreflang="id" href="%VITE_PUBLIC_SITE_URL%/home-id.html" />
+    <link rel="alternate" hreflang="x-default" href="%VITE_PUBLIC_SITE_URL%/home.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Traffic Jakarta" />
+    <meta property="og:title" content="Traffic Jakarta | Live Traffic Map &amp; Community Reports" />
+    <meta
+      property="og:description"
+      content="Live traffic map, community reports, and route planning for Jakarta, Indonesia."
+    />
+    <meta property="og:url" content="%VITE_PUBLIC_SITE_URL%/" />
+    <meta property="og:image" content="%VITE_PUBLIC_SITE_URL%/og-image.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Traffic Jakarta | Live Traffic Map" />
+    <meta
+      name="twitter:description"
+      content="Jakarta traffic map, live traffic, and community road reports."
+    />
+    <meta name="theme-color" content="#0b1220" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="stylesheet" href="/seo-landing.css" />
   </head>
   <body>
+    <div id="tj-seo-landing" class="tj-seo-wrap">
+      <header class="tj-seo-hero">
+        <h1>Traffic Jakarta</h1>
+        <p>
+          Live traffic information, an interactive Jakarta traffic map, community road reports,
+          and route planning. Search: Traffic Jakarta, Jakarta Traffic, Jakarta Traffic Map,
+          Jakarta Traffic Live, Jakarta Traffic App.
+        </p>
+        <button type="button" class="tj-seo-cta" id="tj-open-map-btn">Open Traffic Map</button>
+        <p style="margin-top: 1rem; font-size: 0.875rem">
+          <a href="/home.html" style="color: var(--tj-seo-accent)">About this app</a>
+          ·
+          <a href="/home-id.html" style="color: var(--tj-seo-accent)">Bahasa Indonesia</a>
+        </p>
+      </header>
+      <section class="tj-seo-section" aria-label="Features">
+        <h2>Features</h2>
+        <div class="tj-seo-card">
+          Live TomTom traffic overlay, Smart Traffic, destination search, navigation, community
+          reports (accidents, floods, closures), messages, and 20 interface languages in the app.
+        </div>
+      </section>
+      <footer class="tj-seo-footer">
+        <a href="/legal/privacy.html">Privacy</a> · <a href="/legal/terms.html">Terms</a> ·
+        <a href="/legal/contact.html">Contact</a>
+      </footer>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

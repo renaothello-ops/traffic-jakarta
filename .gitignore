@@ -8,6 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+functions/node_modules
+functions/lib
+.emulator/
 dist
 dist-ssr
 *.local
@@ -24,3 +27,4 @@ dist-ssr
 *.sw?
 .env
 .env.local
+scripts/.i18n-cache/
