@@ -1,10 +1,8 @@
-import { readFileSync } from "node:fs";
 import { describe, it, before, after } from "node:test";
-import {
-  initializeTestEnvironment,
-  assertFails,
-  assertSucceeds,
-} from "@firebase/rules-unit-testing";
+import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
+import { initRulesTestEnvironment } from "./emulatorTestEnv.mjs";
+import { waitForFirestoreEmulatorReady } from "./firestoreEmulatorReady.mjs";
+import { clearEmulatorFirestore } from "./clearEmulatorFirestore.mjs";
 import {
   doc,
   setDoc,
@@ -15,21 +13,19 @@ import {
   addDoc,
 } from "firebase/firestore";
 
-const PROJECT_ID = "traffic-jakarta-rules-test";
-const RULES = readFileSync(new URL("../firestore.rules", import.meta.url), "utf8");
+const PROJECT_ID = "demotrafficjakarta";
+// Security rules: loaded by `firebase emulators:exec` from ../firestore.rules (see emulatorTestEnv.mjs).
 
 /** @type {import('@firebase/rules-unit-testing').RulesTestEnvironment} */
 let testEnv;
 
 before(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: PROJECT_ID,
-    firestore: {
-      rules: RULES,
-      host: "127.0.0.1",
-      port: 8080,
-    },
-  });
+  const notBeforeMs = Date.now();
+  console.error(`[test:rules] ${new Date().toISOString()} before() start`);
+  await waitForFirestoreEmulatorReady(PROJECT_ID, { notBeforeMs });
+  console.error(`[test:rules] ${new Date().toISOString()} initRulesTestEnvironment`);
+  testEnv = await initRulesTestEnvironment({ projectId: PROJECT_ID });
+  console.error(`[test:rules] ${new Date().toISOString()} before() done`);
 });
 
 after(async () => {
@@ -37,7 +33,7 @@ after(async () => {
 });
 
 async function withClearDb(fn) {
-  await testEnv.clearFirestore();
+  await clearEmulatorFirestore(testEnv);
   return fn();
 }
 
@@ -49,6 +45,8 @@ function validPost(overrides = {}) {
     lng: 106.8,
     ownerUid: "alice",
     username: "Alice",
+    audience: "public",
+    anonymous: false,
     createdAt: Date.now(),
     ...overrides,
   };
@@ -212,6 +210,398 @@ describe("Firestore security rules", () => {
       const alice = testEnv.authenticatedContext("alice");
       await assertFails(
         addDoc(collection(alice.firestore(), "posts"), validPost({ lat: 999, lng: 106.8 }))
+      );
+    });
+  });
+
+  it("O — owner can patch language only on profile", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/alice"), {
+          displayName: "Alice",
+          email: "alice@example.com",
+          language: "en",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertSucceeds(
+        updateDoc(doc(alice.firestore(), "users/alice"), {
+          language: "id",
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("P — language patch allowed when legacy extra field exists on profile", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/alice"), {
+          displayName: "Alice",
+          email: "alice@example.com",
+          language: "en",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          legacyMigrationFlag: true,
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertSucceeds(
+        updateDoc(doc(alice.firestore(), "users/alice"), {
+          language: "ja",
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("Q — invalid language value rejected", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/alice"), {
+          displayName: "Alice",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        updateDoc(doc(alice.firestore(), "users/alice"), {
+          language: "xx",
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("R1 — user A cannot read user B favoritePlaces", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/bob/favoritePlaces/home1"), {
+          label: "Home",
+          kind: "home",
+          lat: -6.2,
+          lng: 106.8,
+          radiusKm: 3,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        getDoc(doc(alice.firestore(), "users/bob/favoritePlaces/home1"))
+      );
+    });
+  });
+
+  it("R2 — user A cannot read conversation between B and C", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "conversations/conv-bc"), {
+          memberKeys: ["bob", "carol"],
+          memberA: "bob",
+          memberB: "carol",
+          status: "active",
+          pendingForUid: null,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          lastMessageAt: Date.now(),
+          lastPreview: "hi",
+          lastSenderUid: "bob",
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(getDoc(doc(alice.firestore(), "conversations/conv-bc")));
+    });
+  });
+
+  it("R3 — user A cannot read message in B/C conversation", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "conversations/conv-bc"), {
+          memberKeys: ["bob", "carol"],
+          memberA: "bob",
+          memberB: "carol",
+          status: "active",
+          pendingForUid: null,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          lastMessageAt: Date.now(),
+          lastPreview: "hi",
+          lastSenderUid: "bob",
+        });
+        await setDoc(doc(ctx.firestore(), "conversations/conv-bc/messages/m1"), {
+          senderUid: "bob",
+          kind: "text",
+          text: "secret",
+          createdAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        getDoc(doc(alice.firestore(), "conversations/conv-bc/messages/m1"))
+      );
+    });
+  });
+
+  it("R4 — user A cannot update user B private profile", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/bob"), {
+          displayName: "Bob",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        updateDoc(doc(alice.firestore(), "users/bob"), {
+          displayName: "Hacked",
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("R5 — non-follower cannot read followers-only post", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "posts/followers1"), {
+          ...validPost({ ownerUid: "alice", audience: "followers" }),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertFails(getDoc(doc(bob.firestore(), "posts/followers1")));
+    });
+  });
+
+  it("R6 — user cannot read another user's moderation report", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "userReports/r1"), {
+          reporterUid: "alice",
+          targetType: "user",
+          targetId: "mallory",
+          reason: "spam",
+          status: "pending",
+          createdAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertFails(getDoc(doc(bob.firestore(), "userReports/r1")));
+    });
+  });
+
+  it("R7 — user cannot read another user's ownerSecret", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "posts/anon1/ownerSecret/owner"), {
+          ownerUid: "alice",
+          createdAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertFails(
+        getDoc(doc(bob.firestore(), "posts/anon1/ownerSecret/owner"))
+      );
+    });
+  });
+
+  it("R9 — non-follower cannot read comments on followers-only post", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "posts/followers1"), {
+          ...validPost({ ownerUid: "alice", audience: "followers" }),
+        });
+        await setDoc(doc(ctx.firestore(), "posts/followers1/comments/c1"), {
+          text: "followers only thread",
+          username: "Alice",
+          authorUid: "alice",
+          createdAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertFails(
+        getDoc(doc(bob.firestore(), "posts/followers1/comments/c1"))
+      );
+    });
+  });
+
+  it("R10 — user cannot forge another user's publicProfile counters (999999)", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "publicProfiles/bob"), {
+          displayName: "Bob",
+          accountVisibility: "public",
+          followerCount: 1,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        });
+      });
+      const mallory = testEnv.authenticatedContext("mallory");
+      await assertFails(
+        updateDoc(doc(mallory.firestore(), "publicProfiles/bob"), {
+          followerCount: 999999,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("R10b — user cannot zero another user's followerCount", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "publicProfiles/bob"), {
+          displayName: "Bob",
+          followerCount: 5,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        });
+      });
+      const mallory = testEnv.authenticatedContext("mallory");
+      await assertFails(
+        updateDoc(doc(mallory.firestore(), "publicProfiles/bob"), {
+          followerCount: 0,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("R10c — user cannot set negative counters on another profile", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "publicProfiles/bob"), {
+          displayName: "Bob",
+          followerCount: 1,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        });
+      });
+      const mallory = testEnv.authenticatedContext("mallory");
+      await assertFails(
+        updateDoc(doc(mallory.firestore(), "publicProfiles/bob"), {
+          followerCount: -1,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("R9b — approved follower can read comment on followers-only post", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "posts/followers1"), {
+          ...validPost({ ownerUid: "alice", audience: "followers" }),
+        });
+        await setDoc(doc(ctx.firestore(), "posts/followers1/comments/c1"), {
+          text: "followers only thread",
+          username: "Alice",
+          authorUid: "alice",
+          createdAt: Date.now(),
+        });
+        await setDoc(doc(ctx.firestore(), "follows/bob_alice"), {
+          followerUid: "bob",
+          followingUid: "alice",
+          createdAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertSucceeds(
+        getDoc(doc(bob.firestore(), "posts/followers1/comments/c1"))
+      );
+    });
+  });
+
+  it("R9c — post owner can read comment on followers-only post", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "posts/followers1"), {
+          ...validPost({ ownerUid: "alice", audience: "followers" }),
+        });
+        await setDoc(doc(ctx.firestore(), "posts/followers1/comments/c1"), {
+          text: "owner thread",
+          username: "Alice",
+          authorUid: "alice",
+          createdAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertSucceeds(
+        getDoc(doc(alice.firestore(), "posts/followers1/comments/c1"))
+      );
+    });
+  });
+
+  it("R11 — legitimate follow create (no client counter patch)", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "publicProfiles/alice"), {
+          displayName: "Alice",
+          followerCount: 0,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        });
+        await setDoc(doc(ctx.firestore(), "publicProfiles/bob"), {
+          displayName: "Bob",
+          followerCount: 0,
+          followingCount: 0,
+          postCount: 0,
+          updatedAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertSucceeds(
+        setDoc(doc(bob.firestore(), "follows/bob_alice"), {
+          followerUid: "bob",
+          followingUid: "alice",
+          createdAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("R12 — legitimate unfollow delete", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "follows/bob_alice"), {
+          followerUid: "bob",
+          followingUid: "alice",
+          createdAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertSucceeds(deleteDoc(doc(bob.firestore(), "follows/bob_alice")));
+    });
+  });
+
+  it("R8 — user A cannot read user B notifications", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/bob/notifications/n1"), {
+          type: "new_message",
+          titleKey: "x",
+          bodyKey: "y",
+          actorUid: "carol",
+          recipientUid: "bob",
+          createdAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        getDoc(doc(alice.firestore(), "users/bob/notifications/n1"))
       );
     });
   });
