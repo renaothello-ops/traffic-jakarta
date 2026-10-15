@@ -9,10 +9,62 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "./firebase";
-import type { Post, PostType } from "../../types";
+import { FirebaseError } from "firebase/app";
+import { auth, db } from "./firebase";
+import type {
+  FloodDepth,
+  FloodVehicleAccess,
+  Post,
+  PostType,
+} from "../../types";
+import { normalizePostType } from "./reportTypes";
+import {
+  isAllowedPostType,
+  isValidImageDataUrl,
+  MAX_POST_TEXT_LENGTH,
+  sanitizeText,
+} from "./validation";
+import { displayNameOrFallback } from "./identity";
+import {
+  openGoogleMapsNavigation,
+  openWazeNavigation,
+} from "./navigationLinks";
 
 const col = collection(db, "posts");
+
+function isValidCoordinate(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+function parsePost(id: string, data: Record<string, unknown>, fallbackTs: number): Post {
+  const type = normalizePostType(String(data.type ?? "other"));
+
+  return {
+    id,
+    type,
+    text: (data.text as string) ?? "",
+    lat: Number(data.lat ?? 0),
+    lng: Number(data.lng ?? 0),
+    createdAt: Number(data.createdAt ?? fallbackTs),
+    ...(data.expiresAt != null ? { expiresAt: Number(data.expiresAt) } : {}),
+    imageURL: (data.imageURL as string) || undefined,
+    username: (data.username as string) ?? "Anonymous",
+    ownerUid: (data.ownerUid as string) || undefined,
+    confirmCount: Number(data.confirmCount ?? 0),
+    denyCount: Number(data.denCount ?? data.denyCount ?? 0),
+    ...(data.floodDepth ? { floodDepth: data.floodDepth as FloodDepth } : {}),
+    ...(data.floodVehicleAccess
+      ? { floodVehicleAccess: data.floodVehicleAccess as FloodVehicleAccess }
+      : {}),
+  };
+}
 
 export async function createPost(input: {
   type: PostType;
@@ -20,40 +72,105 @@ export async function createPost(input: {
   lat: number;
   lng: number;
   imageURL?: string;
-  username?: string;
-  ttlMinutes?: number;
+  ownerUid: string;
+  displayName?: string | null;
+  floodDepth?: FloodDepth;
+  floodVehicleAccess?: FloodVehicleAccess;
 }) {
+  const authUid = auth.currentUser?.uid ?? null;
+  if (!authUid) {
+    throw new Error("Please sign in to post.");
+  }
+  if (input.ownerUid !== authUid) {
+    throw new Error("Please sign in to post.");
+  }
+  if (!isAllowedPostType(input.type)) {
+    throw new Error("Invalid report type.");
+  }
+  if (!isValidCoordinate(input.lat, input.lng)) {
+    throw new Error("Invalid report location.");
+  }
+
+  const text = sanitizeText(input.text ?? "", MAX_POST_TEXT_LENGTH);
+  const imageURL = input.imageURL?.trim() ?? "";
+  if (imageURL && !isValidImageDataUrl(imageURL)) {
+    throw new Error("Invalid image upload.");
+  }
+
   const now = Date.now();
-  const ttl = input.ttlMinutes ?? 10;
-  const expiresAt = now + ttl * 60_000;
+
+  const payload: Record<string, unknown> = {
+    type: input.type,
+    text,
+    lat: input.lat,
+    lng: input.lng,
+    username: displayNameOrFallback(input.displayName),
+    ownerUid: authUid,
+    createdAt: now,
+    createdAtServer: serverTimestamp(),
+  };
+
+  if (imageURL) {
+    payload.imageURL = imageURL;
+  }
+
+  if (input.type === "flooded") {
+    if (input.floodDepth) payload.floodDepth = input.floodDepth;
+    if (input.floodVehicleAccess) {
+      payload.floodVehicleAccess = input.floodVehicleAccess;
+    }
+  }
+
+  if (import.meta.env.DEV) {
+    console.info("CREATE_POST_AUTH_UID", authUid);
+    console.info("CREATE_POST_LOCATION", { lat: input.lat, lng: input.lng });
+    console.info("CREATE_POST_PAYLOAD", {
+      ...payload,
+      imageURL: payload.imageURL ? "[image present]" : null,
+      createdAtServer: "[serverTimestamp]",
+    });
+  }
 
   try {
-    const ref = await addDoc(col, {
-      type: input.type,
-      text: input.text ?? "",
-      lat: input.lat,
-      lng: input.lng,
-      imageURL: input.imageURL ?? "",
-      username: input.username ?? "Anonymous",
-      createdAt: now,
-      expiresAt,
-      createdAtServer: serverTimestamp(),
-    });
-
-    console.log("[createPost] saved:", ref.id, {
-      createdAt: now,
-      expiresAt,
-    });
+    const ref = await addDoc(col, payload);
+    if (import.meta.env.DEV) {
+      console.info("[createPost] saved:", ref.id, { createdAt: now, ownerUid: authUid });
+    }
+    return ref.id;
   } catch (error) {
-    console.error("[createPost] failed:", error);
-    alert("Post save failed. Check Console.");
+    console.error("CREATE_POST_ERROR", error);
+    if (error instanceof FirebaseError) {
+      console.error("CREATE_POST_FIREBASE_ERROR", {
+        code: error.code,
+        message: error.message,
+      });
+    }
     throw error;
   }
 }
 
+export function createPostErrorMessage(error: unknown): string {
+  if (error instanceof FirebaseError) {
+    if (error.code === "permission-denied") {
+      return "Could not save report: permission denied. Firestore rules may not be published yet.";
+    }
+    return `${error.code}: ${error.message}`;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Could not save report. Check your connection and Firebase settings.";
+}
+
+function firestoreErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 export function listenActivePosts(
-  _filterMin: number,
-  callback: (posts: Post[]) => void
+  filterMin: number,
+  callback: (posts: Post[]) => void,
+  onError?: (message: string) => void
 ) {
   const q = query(col, orderBy("createdAt", "desc"));
 
@@ -61,60 +178,49 @@ export function listenActivePosts(
 
   const emit = () => {
     const now = Date.now();
+    const cutoff = now - filterMin * 60_000;
 
     const visibleRows = latestRows
-      .filter((p) => Number(p.expiresAt ?? 0) > now)
+      .filter((p) => p.createdAt >= cutoff)
       .sort((a, b) => b.createdAt - a.createdAt);
 
     callback(visibleRows);
   };
 
+  let stopped = false;
+  let timer: number | undefined;
+
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    if (timer != null) window.clearInterval(timer);
+  };
+
   const unsub = onSnapshot(
     q,
     (snap) => {
+      if (stopped) return;
+
       const current = Date.now();
 
-      latestRows = snap.docs.map((d) => {
-        const data = d.data() as any;
-
-        return {
-          id: d.id,
-          type: (data.type ?? "other") as PostType,
-          text: data.text ?? "",
-          lat: Number(data.lat ?? 0),
-          lng: Number(data.lng ?? 0),
-          createdAt: Number(data.createdAt ?? current),
-          expiresAt: Number(data.expiresAt ?? 0),
-          imageURL: data.imageURL ?? "",
-          username: data.username ?? "Anonymous",
-        };
-      });
-
-      console.log(
-        "[listenActivePosts] all docs:",
-        latestRows.map((p) => ({
-          id: p.id,
-          text: p.text,
-          createdAt: p.createdAt,
-          expiresAt: p.expiresAt,
-          expired: p.expiresAt <= Date.now(),
-        }))
+      latestRows = snap.docs.map((d) =>
+        parsePost(d.id, d.data() as Record<string, unknown>, current)
       );
 
       emit();
     },
     (error) => {
       console.error("[listenActivePosts] onSnapshot error:", error);
+      stop();
+      onError?.(firestoreErrorMessage(error));
     }
   );
 
-  const timer = window.setInterval(() => {
-    emit();
-  }, 15_000);
+  timer = window.setInterval(emit, 15_000);
 
   return () => {
+    stop();
     unsub();
-    window.clearInterval(timer);
   };
 }
 
@@ -124,15 +230,32 @@ export async function updatePost(
     text?: string;
     type?: PostType;
     imageURL?: string;
+    floodDepth?: FloodDepth;
+    floodVehicleAccess?: FloodVehicleAccess;
   }
 ) {
   const ref = doc(db, "posts", id);
+  const payload: Record<string, unknown> = {};
 
-  await updateDoc(ref, {
-    ...(updates.text !== undefined ? { text: updates.text } : {}),
-    ...(updates.type !== undefined ? { type: updates.type } : {}),
-    ...(updates.imageURL !== undefined ? { imageURL: updates.imageURL } : {}),
-  });
+  if (updates.text !== undefined) {
+    payload.text = sanitizeText(updates.text, MAX_POST_TEXT_LENGTH);
+  }
+  if (updates.type !== undefined) {
+    if (!isAllowedPostType(updates.type)) throw new Error("Invalid report type.");
+    payload.type = updates.type;
+  }
+  if (updates.imageURL !== undefined) {
+    if (updates.imageURL && !isValidImageDataUrl(updates.imageURL)) {
+      throw new Error("Invalid image upload.");
+    }
+    payload.imageURL = updates.imageURL;
+  }
+  if (updates.floodDepth !== undefined) payload.floodDepth = updates.floodDepth;
+  if (updates.floodVehicleAccess !== undefined) {
+    payload.floodVehicleAccess = updates.floodVehicleAccess;
+  }
+
+  await updateDoc(ref, payload);
 }
 
 export async function updatePostLocation(
@@ -140,15 +263,20 @@ export async function updatePostLocation(
   lat: number,
   lng: number
 ) {
-  const ref = doc(db, "posts", id);
-
-  await updateDoc(ref, {
-    lat,
-    lng,
-  });
+  if (!isValidCoordinate(lat, lng)) {
+    throw new Error("Invalid report location.");
+  }
+  await updateDoc(doc(db, "posts", id), { lat, lng });
 }
 
 export async function deletePost(id: string) {
-  const ref = doc(db, "posts", id);
-  await deleteDoc(ref);
+  await deleteDoc(doc(db, "posts", id));
+}
+
+export function openNavigation(lat: number, lng: number): void {
+  openGoogleMapsNavigation(lat, lng);
+}
+
+export function openWaze(lat: number, lng: number): void {
+  openWazeNavigation(lat, lng);
 }

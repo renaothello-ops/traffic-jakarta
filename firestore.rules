@@ -1,0 +1,691 @@
+rules_version = '2';
+
+// Traffic Jakarta — production Firestore security rules.
+// Deploy via: firebase deploy --only firestore:rules
+// Verify in Firebase Console → Firestore Database → Rules tab.
+//
+// Aggregate counters (confirmCount, denyCount, verified) are NOT client-writable.
+// Vote subcollections are the source of truth. Use a Cloud Function to maintain
+// denormalized counters if the map UI needs them at scale.
+//
+// Publish manually: Firebase Console → Firestore Database → Rules → Publish
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isOwner(ownerUid) {
+      return isSignedIn()
+        && ownerUid is string
+        && ownerUid.size() > 0
+        && request.auth.uid == ownerUid;
+    }
+
+    function hasStoredOwner(data) {
+      return data.keys().hasAll(['ownerUid'])
+        && data.ownerUid is string
+        && data.ownerUid.size() > 0;
+    }
+
+    function validLat(lat) {
+      return lat is number && lat >= -90 && lat <= 90;
+    }
+
+    function validLng(lng) {
+      return lng is number && lng >= -180 && lng <= 180;
+    }
+
+    function validOptionalImageURL(data) {
+      return !data.keys().hasAny(['imageURL'])
+        || (data.imageURL is string && data.imageURL.size() <= 1500000);
+    }
+
+    function validPostType(type) {
+      return type in [
+        'accident', 'road_closed', 'heavy_traffic', 'flooded', 'construction',
+        'car_passable', 'motorcycle_only', 'hazard', 'other',
+        // Legacy values — readable on map; not accepted on create/update
+        'traffic', 'police', 'flood'
+      ];
+    }
+
+    function validNewPostType(type) {
+      return type in [
+        'accident', 'road_closed', 'heavy_traffic', 'flooded', 'construction',
+        'car_passable', 'motorcycle_only', 'hazard', 'other'
+      ];
+    }
+
+    function validFloodDepth(depth) {
+      return depth in ['lt10', '10to30', '30to50', 'gt50', 'unknown'];
+    }
+
+    function validFloodVehicleAccess(access) {
+      return access in [
+        'car_passable', 'suv_caution', 'motorcycle_passable', 'not_passable'
+      ];
+    }
+
+    function validPostFloodFields(data) {
+      return (!data.keys().hasAny(['floodDepth']) || validFloodDepth(data.floodDepth))
+        && (!data.keys().hasAny(['floodVehicleAccess'])
+          || validFloodVehicleAccess(data.floodVehicleAccess));
+    }
+
+    function validPostCoreFields(data) {
+      return validNewPostType(data.type)
+        && data.text is string
+        && data.text.size() <= 500
+        && validLat(data.lat)
+        && validLng(data.lng)
+        && data.username is string
+        && data.username.size() <= 120
+        && validOptionalImageURL(data)
+        && validPostFloodFields(data);
+    }
+
+    // Updates may keep legacy stored types (traffic, police, flood) on old documents.
+    function validPostFieldsForUpdate(data) {
+      return validPostType(data.type)
+        && data.text is string
+        && data.text.size() <= 500
+        && validLat(data.lat)
+        && validLng(data.lng)
+        && validOptionalImageURL(data)
+        && validPostFloodFields(data);
+    }
+
+    function validAudience(aud) {
+      return aud in ['public', 'followers'];
+    }
+
+    function validPostCreateKeys() {
+      return request.resource.data.keys().hasOnly([
+        'type', 'text', 'lat', 'lng', 'ownerUid', 'username', 'createdAt',
+        'imageURL', 'floodDepth', 'floodVehicleAccess', 'createdAtServer',
+        'audience', 'anonymous'
+      ]);
+    }
+
+    function validAnonymousPublicCreate() {
+      return request.resource.data.get('anonymous', false) == true
+        && request.resource.data.get('audience', 'public') == 'public'
+        && !request.resource.data.keys().hasAny(['ownerUid']);
+    }
+
+    function validIdentifiedPostCreate() {
+      return request.resource.data.keys().hasAny(['ownerUid'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.get('anonymous', false) != true;
+    }
+
+    function validPostCreate() {
+      return isSignedIn()
+        && validPostCreateKeys()
+        && request.resource.data.createdAt is number
+        && validPostCoreFields(request.resource.data)
+        && validAudience(request.resource.data.get('audience', 'public'))
+        && (validAnonymousPublicCreate() || validIdentifiedPostCreate());
+    }
+
+    function postAudience(data) {
+      return data.get('audience', 'public');
+    }
+
+    function isLegacyOpenPost(data) {
+      return !data.keys().hasAny(['audience']);
+    }
+
+    function followDocId(followerUid, followingUid) {
+      return followerUid + '_' + followingUid;
+    }
+
+    function isApprovedFollower(followerUid, followingUid) {
+      return followerUid is string
+        && followingUid is string
+        && followerUid.size() > 0
+        && followingUid.size() > 0
+        && exists(/databases/$(database)/documents/follows/$(followDocId(followerUid, followingUid)));
+    }
+
+    function isBlocked(blockerUid, blockedUid) {
+      return blockerUid is string
+        && blockedUid is string
+        && blockerUid.size() > 0
+        && blockedUid.size() > 0
+        && exists(/databases/$(database)/documents/blocks/$(blockerUid)/blocked/$(blockedUid));
+    }
+
+    function eitherBlocked(uidA, uidB) {
+      return isBlocked(uidA, uidB) || isBlocked(uidB, uidA);
+    }
+
+    function conversationMember(conversationId) {
+      return get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+    }
+
+    function isConversationMember(conversationId) {
+      let conv = conversationMember(conversationId);
+      return isSignedIn()
+        && conv.keys().hasAll(['memberKeys'])
+        && conv.memberKeys is list
+        && conv.memberKeys.hasAny([request.auth.uid]);
+    }
+
+    function postOwnerUid(data) {
+      return data.get('ownerUid', '');
+    }
+
+    function canReadPostData(data) {
+      return isLegacyOpenPost(data)
+        || postAudience(data) == 'public'
+        || (isSignedIn()
+          && postOwnerUid(data) == request.auth.uid)
+        || (postAudience(data) == 'followers'
+          && isSignedIn()
+          && postOwnerUid(data).size() > 0
+          && isApprovedFollower(request.auth.uid, postOwnerUid(data)));
+    }
+
+    function canReadAnonymousOwnerSecret(postId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/posts/$(postId)/ownerSecret/owner)
+        && get(/databases/$(database)/documents/posts/$(postId)/ownerSecret/owner).data.ownerUid
+            == request.auth.uid;
+    }
+
+    function postImmutableFieldsUnchanged() {
+      return request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.get('confirmCount', 0)
+            == resource.data.get('confirmCount', 0)
+        && request.resource.data.get('denyCount', 0)
+            == resource.data.get('denyCount', 0)
+        && request.resource.data.get('createdAtServer', null)
+            == resource.data.get('createdAtServer', null);
+    }
+
+    function validPostOwnerUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid)
+        && postImmutableFieldsUnchanged()
+        && changed.hasOnly([
+          'type', 'text', 'lat', 'lng', 'imageURL', 'floodDepth', 'floodVehicleAccess'
+        ])
+        && validPostFieldsForUpdate(request.resource.data);
+    }
+
+    function validVoteWrite() {
+      return request.resource.data.keys().hasOnly([
+        'vote', 'voterId', 'createdAt', 'createdAtServer'
+      ])
+        && request.resource.data.voterId == request.auth.uid
+        && request.resource.data.vote in ['confirm', 'deny']
+        && request.resource.data.createdAt is number;
+    }
+
+    function validCommentCreate() {
+      return request.resource.data.keys().hasOnly([
+        'text', 'username', 'authorUid', 'createdAt', 'createdAtServer', 'parentCommentId'
+      ])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 280
+        && request.resource.data.username is string
+        && request.resource.data.username.size() <= 120
+        && request.resource.data.createdAt is number;
+    }
+
+    function validCommentUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorUid == resource.data.authorUid
+        && changed.hasOnly(['text'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 280;
+    }
+
+    function validLanguage(lang) {
+      return lang in [
+        'id', 'en', 'ja', 'ko', 'zh-Hans', 'zh-Hant', 'ms', 'th', 'vi', 'fil',
+        'hi', 'ar', 'es', 'fr', 'de', 'pt', 'it', 'ru', 'tr', 'nl'
+      ];
+    }
+
+    function validAvatarSource(src) {
+      return src in ['google', 'initials', 'custom'];
+    }
+
+    function userAllowedFieldKeys() {
+      return [
+        'displayName', 'photoURL', 'email', 'licensePlate',
+        'ganjilGenapEnabled', 'createdAt', 'updatedAt', 'createdAtServer',
+        'language', 'username', 'usernameLower', 'avatarSource',
+        'notificationSettings', 'privacySettings', 'bio'
+      ];
+    }
+
+    function validUserWriteKeys() {
+      return request.resource.data.keys().hasOnly(userAllowedFieldKeys());
+    }
+
+    function validUserFieldValues(data) {
+      return (!data.keys().hasAny(['displayName'])
+          || (data.displayName is string && data.displayName.size() <= 120))
+        && (!data.keys().hasAny(['photoURL'])
+          || (data.photoURL is string && data.photoURL.size() <= 2048))
+        && (!data.keys().hasAny(['email'])
+          || (data.email is string && data.email.size() <= 320))
+        && (!data.keys().hasAny(['licensePlate'])
+          || (data.licensePlate is string && data.licensePlate.size() <= 32))
+        && (!data.keys().hasAny(['ganjilGenapEnabled'])
+          || data.ganjilGenapEnabled is bool)
+        && (!data.keys().hasAny(['language'])
+          || validLanguage(data.language))
+        && (!data.keys().hasAny(['username'])
+          || (data.username is string
+            && data.username.size() >= 3
+            && data.username.size() <= 20))
+        && (!data.keys().hasAny(['usernameLower'])
+          || (data.usernameLower is string
+            && data.usernameLower.size() >= 3
+            && data.usernameLower.size() <= 20))
+        && (!data.keys().hasAny(['avatarSource'])
+          || validAvatarSource(data.avatarSource))
+        && (!data.keys().hasAny(['notificationSettings'])
+          || data.notificationSettings is map)
+        && (!data.keys().hasAny(['privacySettings'])
+          || data.privacySettings is map)
+        && (!data.keys().hasAny(['createdAt'])
+          || data.createdAt is number)
+        && (!data.keys().hasAny(['updatedAt'])
+          || data.updatedAt is number);
+    }
+
+    function validUserWrite() {
+      return validUserWriteKeys() && validUserFieldValues(request.resource.data);
+    }
+
+    // Patch updates (e.g. language only) — legacy extra fields on the doc may remain.
+    function validUserUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.size() > 0
+        && changed.hasOnly([
+          'displayName', 'photoURL', 'email', 'licensePlate', 'ganjilGenapEnabled',
+          'updatedAt', 'language', 'username', 'usernameLower', 'avatarSource',
+          'notificationSettings', 'privacySettings', 'bio'
+        ])
+        && validUserFieldValues(request.resource.data);
+    }
+
+    function validNotificationCreate(userId) {
+      return request.resource.data.keys().hasOnly([
+        'type', 'titleKey', 'bodyKey', 'bodyParams', 'relatedPostId',
+        'relatedProfileUid', 'actorUid', 'recipientUid', 'createdAt', 'readAt'
+      ])
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.recipientUid == userId
+        && request.resource.data.createdAt is number
+        && request.resource.data.type in [
+          'comment_on_post', 'comment_reply', 'vote_on_post', 'nearby_incident',
+          'new_follower', 'follow_request', 'follow_request_accepted',
+          'message_request', 'new_message', 'report_confirmation'
+        ];
+    }
+
+    function validNotificationUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['readAt'])
+        && request.resource.data.readAt is number;
+    }
+
+    function validRoadAccess(access) {
+      return access in [
+        'cars', 'motorcycles', 'motorcycle_only', 'restricted', 'private'
+      ];
+    }
+
+    function validCommunityRoadCreateKeys() {
+      return request.resource.data.keys().hasOnly([
+        'name', 'description', 'access', 'coordinates', 'imageURL',
+        'ownerUid', 'username', 'createdAt', 'createdAtServer'
+      ]);
+    }
+
+    function validCommunityRoadCreate() {
+      return isSignedIn()
+        && validCommunityRoadCreateKeys()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.createdAt is number
+        && validRoadAccess(request.resource.data.access)
+        && request.resource.data.coordinates is list
+        && request.resource.data.coordinates.size() >= 2
+        && request.resource.data.coordinates.size() <= 500
+        && request.resource.data.username is string
+        && request.resource.data.username.size() <= 120
+        && (!request.resource.data.keys().hasAny(['name'])
+          || (request.resource.data.name is string
+            && request.resource.data.name.size() <= 120))
+        && (!request.resource.data.keys().hasAny(['description'])
+          || (request.resource.data.description is string
+            && request.resource.data.description.size() <= 500))
+        && validOptionalImageURL(request.resource.data);
+    }
+
+    function roadImmutableFieldsUnchanged() {
+      return request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.get('confirmCount', 0)
+            == resource.data.get('confirmCount', 0)
+        && request.resource.data.get('denyCount', 0)
+            == resource.data.get('denyCount', 0)
+        && request.resource.data.get('verified', false)
+            == resource.data.get('verified', false)
+        && request.resource.data.get('createdAtServer', null)
+            == resource.data.get('createdAtServer', null);
+    }
+
+    function validCommunityRoadOwnerUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid)
+        && roadImmutableFieldsUnchanged()
+        && changed.hasOnly([
+          'name', 'description', 'access', 'coordinates', 'imageURL'
+        ])
+        && validRoadAccess(request.resource.data.access)
+        && request.resource.data.coordinates is list
+        && request.resource.data.coordinates.size() >= 2
+        && request.resource.data.coordinates.size() <= 500
+        && validOptionalImageURL(request.resource.data);
+    }
+
+    // -------------------------------------------------------------------------
+    // users/{uid} — private profile, owner only
+    // -------------------------------------------------------------------------
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+
+      allow create: if isSelf(userId) && validUserWrite();
+
+      allow update: if isSelf(userId)
+        && validUserUpdate()
+        && request.resource.data.get('createdAt', resource.data.get('createdAt', 0))
+            == resource.data.get('createdAt', 0);
+
+      allow delete: if isSelf(userId);
+
+      match /notifications/{notificationId} {
+        allow read: if isSelf(userId);
+        allow create: if isSignedIn() && validNotificationCreate(userId);
+        allow update: if isSelf(userId) && validNotificationUpdate();
+        allow delete: if isSelf(userId);
+      }
+
+      match /favoritePlaces/{placeId} {
+        allow read, write: if isSelf(userId);
+      }
+    }
+
+    function validPublicProfileCounterFieldsOnCreate() {
+      return (!request.resource.data.keys().hasAny(['followerCount'])
+          || request.resource.data.followerCount == 0)
+        && (!request.resource.data.keys().hasAny(['followingCount'])
+          || request.resource.data.followingCount == 0)
+        && (!request.resource.data.keys().hasAny(['postCount'])
+          || request.resource.data.postCount == 0);
+    }
+
+    function validPublicProfileOwnerUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return !changed.hasAny(['followerCount', 'followingCount', 'postCount']);
+    }
+
+    match /publicProfiles/{profileUid} {
+      allow read: if true;
+      allow create: if isSelf(profileUid) && validPublicProfileCounterFieldsOnCreate();
+      allow update: if isSelf(profileUid) && validPublicProfileOwnerUpdate();
+      allow delete: if isSelf(profileUid);
+    }
+
+    match /follows/{followId} {
+      allow read: if isSignedIn()
+        && (resource.data.followerUid == request.auth.uid
+          || resource.data.followingUid == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'followerUid', 'followingUid', 'createdAt', 'createdAtServer'
+        ])
+        && request.resource.data.followerUid == request.auth.uid
+        && request.resource.data.followingUid != request.auth.uid
+        && !eitherBlocked(
+          request.resource.data.followerUid,
+          request.resource.data.followingUid
+        )
+        && followId == followDocId(
+          request.resource.data.followerUid,
+          request.resource.data.followingUid
+        );
+      allow delete: if isSignedIn()
+        && (resource.data.followerUid == request.auth.uid
+          || resource.data.followingUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    match /blocks/{blockerUid}/blocked/{blockedUid} {
+      allow read: if isSelf(blockerUid);
+      allow create: if isSelf(blockerUid)
+        && blockedUid != request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'blockedUid', 'createdAt', 'createdAtServer'
+        ])
+        && request.resource.data.blockedUid == blockedUid;
+      allow delete: if isSelf(blockerUid);
+      allow update: if false;
+    }
+
+    match /userReports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'reporterUid', 'targetType', 'targetId', 'reason', 'details',
+          'relatedPostId', 'relatedMessageId', 'reportedUid', 'createdAt',
+          'createdAtServer', 'status'
+        ])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.targetType in [
+          'user', 'post', 'comment', 'message'
+        ]
+        && request.resource.data.reason in [
+          'spam', 'harassment', 'false_traffic', 'inappropriate', 'other'
+        ]
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is number;
+      allow read: if isSignedIn()
+        && resource.data.reporterUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn()
+        && resource.data.memberKeys is list
+        && resource.data.memberKeys.hasAny([request.auth.uid]);
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly([
+          'memberKeys', 'memberA', 'memberB', 'status', 'pendingForUid',
+          'createdAt', 'updatedAt', 'lastMessageAt', 'lastPreview',
+          'lastSenderUid', 'createdAtServer'
+        ])
+        && request.resource.data.memberKeys.size() == 2
+        && request.resource.data.memberKeys.hasAny([request.auth.uid])
+        && request.resource.data.status in ['pending', 'active']
+        && !eitherBlocked(
+          request.resource.data.memberKeys[0],
+          request.resource.data.memberKeys[1]
+        );
+      allow update: if isSignedIn()
+        && resource.data.memberKeys.hasAny([request.auth.uid])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'pendingForUid', 'updatedAt', 'lastMessageAt',
+          'lastPreview', 'lastSenderUid'
+        ]);
+      allow delete: if isSignedIn()
+        && resource.data.memberKeys.hasAny([request.auth.uid]);
+
+      match /messages/{messageId} {
+        allow read: if isConversationMember(conversationId);
+        allow create: if isConversationMember(conversationId)
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.createdAt is number
+          && request.resource.data.kind in [
+            'text', 'photo', 'traffic_report', 'location', 'route'
+          ];
+        allow update, delete: if false;
+      }
+    }
+
+    match /userThreads/{uid}/threads/{threadId} {
+      allow read: if isSelf(uid);
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly([
+          'conversationId', 'peerUid', 'status', 'pendingForUid',
+          'lastMessageAt', 'lastPreview', 'lastSenderUid', 'unreadCount', 'updatedAt'
+        ]);
+      allow update: if isSelf(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'pendingForUid', 'lastMessageAt', 'lastPreview',
+          'lastSenderUid', 'unreadCount', 'updatedAt'
+        ]);
+      allow delete: if isSelf(uid);
+    }
+
+    match /followRequests/{targetUid}/incoming/{requesterUid} {
+      allow read: if isSelf(targetUid) || isSelf(requesterUid);
+      allow create: if isSignedIn()
+        && requesterUid == request.auth.uid
+        && targetUid != request.auth.uid
+        && !eitherBlocked(request.auth.uid, targetUid)
+        && request.resource.data.keys().hasOnly([
+          'targetUid', 'requesterUid', 'status', 'createdAt', 'createdAtServer'
+        ])
+        && request.resource.data.targetUid == targetUid
+        && request.resource.data.requesterUid == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update: if isSelf(targetUid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt'])
+        && request.resource.data.status in ['accepted', 'rejected'];
+      allow delete: if isSelf(targetUid) || isSelf(requesterUid);
+    }
+
+    match /usernames/{handle} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt is number;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // posts/{postId}
+    // -------------------------------------------------------------------------
+
+    match /posts/{postId} {
+      allow read: if canReadPostData(resource.data);
+
+      allow create: if validPostCreate();
+
+      allow update: if validPostOwnerUpdate()
+        || (canReadAnonymousOwnerSecret(postId)
+          && request.resource.data.get('ownerUid', null) == null
+          && resource.data.get('ownerUid', null) == null);
+
+      allow delete: if (hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid))
+        || canReadAnonymousOwnerSecret(postId);
+
+      match /ownerSecret/owner {
+        allow read: if isSignedIn()
+          && resource.data.ownerUid == request.auth.uid;
+        allow create: if isSignedIn()
+          && request.resource.data.keys().hasOnly([
+            'ownerUid', 'createdAt', 'createdAtServer'
+          ])
+          && request.resource.data.ownerUid == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      match /votes/{voterId} {
+        allow read: if true;
+
+        allow create: if isSelf(voterId) && validVoteWrite();
+
+        allow update: if isSelf(voterId)
+          && validVoteWrite()
+          && request.resource.data.voterId == resource.data.voterId;
+
+        allow delete: if isSelf(voterId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if canReadPostData(
+          get(/databases/$(database)/documents/posts/$(postId)).data
+        );
+
+        allow create: if isSignedIn()
+          && validCommentCreate()
+          && !eitherBlocked(
+            request.auth.uid,
+            postOwnerUid(get(/databases/$(database)/documents/posts/$(postId)).data)
+          );
+
+        allow update: if isSignedIn() && validCommentUpdate();
+
+        allow delete: if isSignedIn()
+          && resource.data.authorUid == request.auth.uid;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // communityRoads/{roadId}
+    // -------------------------------------------------------------------------
+
+    match /communityRoads/{roadId} {
+      allow read: if true;
+
+      allow create: if validCommunityRoadCreate();
+
+      allow update: if validCommunityRoadOwnerUpdate();
+
+      allow delete: if hasStoredOwner(resource.data)
+        && isOwner(resource.data.ownerUid);
+
+      match /votes/{voterId} {
+        allow read: if true;
+
+        allow create: if isSelf(voterId) && validVoteWrite();
+
+        allow update: if isSelf(voterId)
+          && validVoteWrite()
+          && request.resource.data.voterId == resource.data.voterId;
+
+        allow delete: if isSelf(voterId);
+      }
+    }
+  }
+}
