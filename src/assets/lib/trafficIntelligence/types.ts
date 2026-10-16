@@ -1,15 +1,13 @@
-/** Future AI output — not populated until an external model is connected. */
-export type TrafficForecastResult = {
-  trend: "improving" | "stable" | "worsening" | "unknown";
-  confidence: number | null;
-  predictedDelayMinutes: number | null;
-  recommendation:
-    | "keep_route"
-    | "consider_reroute"
-    | "reroute"
-    | "insufficient_data";
-  explanation: string;
-};
+/** Re-export intelligence types; route snapshot types remain here for navigation hook. */
+export type {
+  TrafficForecastResult,
+  TrafficIntelligenceResult,
+  TrafficTextAnalysis,
+  TrafficTrendState,
+  TrafficTrendResult,
+  CommunityTrafficConfidence,
+  DataCompletenessFlags as DataCompletenessExtended,
+} from "../../../intelligence/types";
 
 export type TrafficTrendValue =
   | "improving"
@@ -46,11 +44,8 @@ export type TrafficIntelligenceSnapshot = {
   freshestReportAgeSeconds: number | null;
   routeAffected: boolean;
   distanceAheadMeters: number | null;
-  /** Upstream TomTom data timestamp when available; null for raster-only overlay. */
   tomTomTrafficTimestamp: number | null;
-  /** When community signals were last aggregated (client snapshot time). */
   communitySignalTimestamp: number | null;
-  /** Age of the freshest active community report in seconds. */
   communitySignalAgeSeconds: number | null;
   dataCompleteness: DataCompleteness;
 };

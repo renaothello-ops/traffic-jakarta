@@ -1,5 +1,6 @@
+import { useTranslation } from "react-i18next";
 import type { RoadAccess } from "../types";
-import { ROAD_ACCESS_OPTIONS } from "../assets/lib/communityRoads";
+import { ROAD_ACCESS_VALUES } from "../assets/lib/communityRoads";
 
 type Props = {
   points: Array<{ lat: number; lng: number }>;
@@ -32,6 +33,7 @@ export default function CommunityRoadComposer({
   onSubmit,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
   const canSave = points.length >= 2;
 
   return (
@@ -39,37 +41,41 @@ export default function CommunityRoadComposer({
       <div className="tj-sheet tj-sheet--composer">
         <div className="tj-sheet__handle" />
         <div className="tj-sheet__header">
-          <h2 className="tj-sheet__title">Add community road</h2>
-          <button type="button" className="tj-icon-btn" onClick={onClose} aria-label="Close">
+          <h2 className="tj-sheet__title">{t("community.addRoadTitle")}</h2>
+          <button
+            type="button"
+            className="tj-icon-btn"
+            onClick={onClose}
+            aria-label={t("common.close")}
+          >
             ✕
           </button>
         </div>
 
         <p className="tj-hint">
-          Tap points on the map to draw a path ({points.length} point
-          {points.length === 1 ? "" : "s"}). Community road — unverified.
+          {t("community.roadDrawHint", { count: points.length })}
         </p>
 
         <label className="tj-label">
-          Road name (optional)
+          {t("community.roadNameLabel")}
           <input
             className="tj-input"
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
-            placeholder="e.g. Gang Melati shortcut"
+            placeholder={t("community.roadNamePlaceholder")}
           />
         </label>
 
         <label className="tj-label">
-          Access
+          {t("community.roadAccessLabel")}
           <select
             className="tj-select"
             value={access}
             onChange={(e) => onAccessChange(e.target.value as RoadAccess)}
           >
-            {ROAD_ACCESS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
+            {ROAD_ACCESS_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {t(`community.roadAccess.${value}`)}
               </option>
             ))}
           </select>
@@ -79,12 +85,12 @@ export default function CommunityRoadComposer({
           className="tj-textarea"
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
-          placeholder="Optional description"
+          placeholder={t("composer.optionalDescription")}
           rows={2}
         />
 
         <label className="tj-file-label">
-          📷 Optional photo
+          📷 {t("community.roadPhotoOptional")}
           <input
             type="file"
             accept="image/*"
@@ -100,11 +106,15 @@ export default function CommunityRoadComposer({
           />
         </label>
 
-        {image && (
-          <img src={image} alt="Road preview" className="tj-preview-img" />
-        )}
+        {image ? (
+          <img
+            src={image}
+            alt={t("composer.roadPreviewAlt")}
+            className="tj-preview-img"
+          />
+        ) : null}
 
-        {error && <p className="tj-error">{error}</p>}
+        {error ? <p className="tj-error">{error}</p> : null}
 
         <button
           type="button"
@@ -112,7 +122,7 @@ export default function CommunityRoadComposer({
           onClick={onSubmit}
           disabled={!canSave || submitting}
         >
-          {submitting ? "Saving…" : "Save community road"}
+          {submitting ? t("common.saving") : t("composer.saveCommunityRoad")}
         </button>
       </div>
     </div>

@@ -1,6 +1,10 @@
 import { useCallback, useEffect } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
-import type { GeoJSONSource, Map as MaplibreMap } from "maplibre-gl";
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  Map as MaplibreMap,
+} from "maplibre-gl";
 import type { RoutePlan } from "../types";
 import {
   NAV_ROUTE_ALT_CASING_LAYER,
@@ -20,7 +24,7 @@ const MAIN_SOURCE = "nav-route-main";
 const DONE_SOURCE = "nav-route-done";
 const ALT_SOURCE = "nav-route-alt";
 
-const ROUTE_WIDTH: maplibregl.ExpressionSpecification = [
+const ROUTE_WIDTH: ExpressionSpecification = [
   "interpolate",
   ["linear"],
   ["zoom"],
@@ -34,7 +38,7 @@ const ROUTE_WIDTH: maplibregl.ExpressionSpecification = [
   9,
 ];
 
-const ROUTE_CASING_WIDTH: maplibregl.ExpressionSpecification = [
+const ROUTE_CASING_WIDTH: ExpressionSpecification = [
   "interpolate",
   ["linear"],
   ["zoom"],
@@ -48,7 +52,7 @@ const ROUTE_CASING_WIDTH: maplibregl.ExpressionSpecification = [
   13,
 ];
 
-const DONE_WIDTH: maplibregl.ExpressionSpecification = [
+const DONE_WIDTH: ExpressionSpecification = [
   "interpolate",
   ["linear"],
   ["zoom"],
@@ -62,7 +66,7 @@ const DONE_WIDTH: maplibregl.ExpressionSpecification = [
   7,
 ];
 
-const DONE_CASING_WIDTH: maplibregl.ExpressionSpecification = [
+const DONE_CASING_WIDTH: ExpressionSpecification = [
   "interpolate",
   ["linear"],
   ["zoom"],
@@ -96,8 +100,8 @@ function upsertLineLayer(
     casingOpacity: number;
     lineColor: string;
     lineOpacity: number;
-    lineWidth: maplibregl.ExpressionSpecification | number;
-    casingWidth: maplibregl.ExpressionSpecification | number;
+    lineWidth: ExpressionSpecification | number;
+    casingWidth: ExpressionSpecification | number;
     dasharray?: number[];
   }
 ): void {

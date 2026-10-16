@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { AppTab } from "../types";
 
 type Props = {
@@ -5,15 +6,15 @@ type Props = {
   onChange: (tab: AppTab) => void;
 };
 
-const TABS: Array<{ id: AppTab; label: string }> = [
-  { id: "map", label: "🗺 Map" },
-  { id: "comment", label: "💬 Comment" },
-  { id: "profile", label: "👤 Profile" },
-];
-
 export default function BottomNav({ active, onChange }: Props) {
+  const { t } = useTranslation();
+  const TABS: Array<{ id: AppTab; label: string }> = [
+    { id: "map", label: t("nav.map") },
+    { id: "comment", label: t("nav.community") },
+    { id: "profile", label: t("nav.profile") },
+  ];
   return (
-    <nav className="tj-bottom-nav" aria-label="Main navigation">
+    <nav className="tj-bottom-nav" aria-label={t("nav.mainAria")}>
       {TABS.map((tab) => (
         <button
           key={tab.id}

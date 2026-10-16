@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Destination } from "../types";
 
 type Props = {
@@ -15,6 +16,7 @@ export default function DestinationBottomSheet({
   onDirections,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="tj-dest-sheet">
       <div className="tj-sheet__handle" />
@@ -25,7 +27,7 @@ export default function DestinationBottomSheet({
             <p className="tj-dest-sheet__address">{destination.address}</p>
           )}
         </div>
-        <button type="button" className="tj-icon-btn" onClick={onClose} aria-label="Close">
+        <button type="button" className="tj-icon-btn" onClick={onClose} aria-label={t("common.close")}>
           ✕
         </button>
       </div>
@@ -39,7 +41,7 @@ export default function DestinationBottomSheet({
           onClick={onDirections}
           disabled={routing}
         >
-          {routing ? "Calculating…" : "Directions"}
+          {routing ? t("route.calculatingShort") : t("route.directions")}
         </button>
       </div>
     </div>

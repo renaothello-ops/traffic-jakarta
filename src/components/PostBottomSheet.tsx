@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Comment, Post, Vote, VoteType } from "../types";
-import {
-  FLOOD_DEPTH_OPTIONS,
-  FLOOD_VEHICLE_OPTIONS,
-  getReportTypeMeta,
-} from "../assets/lib/reportTypes";
-import { buildPostVoteStats, publicTrustLabel } from "../assets/lib/trust";
+import { getReportTypeMeta } from "../assets/lib/reportTypes";
+import { buildPostVoteStats } from "../assets/lib/trust";
+import { publicTrustLabelI18n } from "../assets/lib/trustI18n";
+import { reportTypeLabel } from "../assets/lib/reportTypeI18n";
+import { floodDepthLabel, floodVehicleLabel } from "../assets/lib/floodI18n";
 import { useVerificationClock } from "../hooks/useVerificationClock";
 import { timeAgo } from "../assets/lib/timeAgo";
 import { listenComments, addComment } from "../assets/lib/comments";
@@ -28,6 +28,7 @@ type Props = {
   onMoveMarker: () => void;
   onFixMarker: () => void;
   onRequireSignIn?: () => void;
+  onAskReporter?: (post: Post) => void;
 };
 
 function avatarInitial(name?: string): string {
@@ -47,9 +48,12 @@ export default function PostBottomSheet({
   onMoveMarker,
   onFixMarker,
   onRequireSignIn,
+  onAskReporter,
 }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const meta = getReportTypeMeta(post.type);
+  const typeLabel = reportTypeLabel(t, post.type);
   const voterId = user?.uid ?? null;
   const canModify = isMinePost(post, user?.uid);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +105,7 @@ export default function PostBottomSheet({
 
   function requireAuth(): boolean {
     if (user?.uid) return true;
-    setActionError("Sign in to interact with reports.");
+    setActionError(t("errors.signInInteract"));
     onRequireSignIn?.();
     return false;
   }
@@ -115,7 +119,7 @@ export default function PostBottomSheet({
       await setUserVote(post.id, nextVote);
     } catch (error) {
       console.error("[vote] failed:", error);
-      setActionError("Could not save your vote.");
+      setActionError(t("errors.voteFailed"));
     } finally {
       setVoting(false);
     }
@@ -126,7 +130,7 @@ export default function PostBottomSheet({
     const trimmed = commentText.trim();
     if (!trimmed || submittingComment) return;
     if (trimmed.length > MAX_COMMENT_LENGTH) {
-      setActionError(`Comments must be ${MAX_COMMENT_LENGTH} characters or less.`);
+      setActionError(t("errors.commentMaxLength", { max: MAX_COMMENT_LENGTH }));
       return;
     }
 
@@ -137,20 +141,20 @@ export default function PostBottomSheet({
       setCommentText("");
     } catch (error) {
       console.error("[comment] failed:", error);
-      setActionError("Could not post comment.");
+      setActionError(t("errors.commentFailed"));
     } finally {
       setSubmittingComment(false);
     }
   }
 
   async function handleShare() {
-    const shareText = `${meta.label}${post.text ? `: ${post.text}` : ""} — Traffic Jakarta`;
+    const shareText = `${typeLabel}${post.text ? `: ${post.text}` : ""} — Traffic Jakarta`;
     const shareUrl = `${window.location.origin}${window.location.pathname}?post=${post.id}`;
 
     try {
       if (navigator.share) {
         await navigator.share({
-          title: meta.label,
+          title: typeLabel,
           text: shareText,
           url: shareUrl,
         });
@@ -164,7 +168,7 @@ export default function PostBottomSheet({
       await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
       setActionError(null);
     } catch {
-      setActionError("Could not share this report.");
+      setActionError(t("errors.shareFailed"));
     }
   }
 
@@ -173,14 +177,10 @@ export default function PostBottomSheet({
     commentInputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  const floodDepthLabel = FLOOD_DEPTH_OPTIONS.find(
-    (o) => o.value === post.floodDepth
-  )?.label;
-  const floodVehicleLabel = FLOOD_VEHICLE_OPTIONS.find(
-    (o) => o.value === post.floodVehicleAccess
-  )?.label;
+  const floodDepth = floodDepthLabel(t, post.floodDepth);
+  const floodVehicle = floodVehicleLabel(t, post.floodVehicleAccess);
 
-  const displayName = post.username || "Anonymous";
+  const displayName = post.username || t("common.anonymous");
 
   return (
     <div className="tj-bottom-sheet tj-bottom-sheet--social">
@@ -193,10 +193,15 @@ export default function PostBottomSheet({
           <strong className="tj-post-header__name">{displayName}</strong>
           <div className="tj-post-header__meta">
             {timeAgo(post.createdAt)} ·{" "}
-            {publicTrustLabel(confirmCount, trustLevel, isCommunityVerified)}
+            {publicTrustLabelI18n(t, confirmCount, trustLevel, isCommunityVerified)}
           </div>
         </div>
-        <button type="button" className="tj-icon-btn" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="tj-icon-btn"
+          onClick={onClose}
+          aria-label={t("common.close")}
+        >
           ✕
         </button>
       </div>
@@ -205,26 +210,36 @@ export default function PostBottomSheet({
         <span className="tj-post-type-title__emoji" aria-hidden>
           {meta.emoji}
         </span>
-        <h2 className="tj-post-type-title__label">{meta.label}</h2>
+        <h2 className="tj-post-type-title__label">{typeLabel}</h2>
       </div>
 
       {post.imageURL && (
-        <img src={post.imageURL} alt="Report" className="tj-preview-img tj-preview-img--social" />
+        <img
+          src={post.imageURL}
+          alt={t("composer.reportPreviewAlt")}
+          className="tj-preview-img tj-preview-img--social"
+        />
       )}
 
       {post.text && <p className="tj-post-body">{post.text}</p>}
 
-      {post.type === "flooded" && (floodDepthLabel || floodVehicleLabel) && (
+      {post.type === "flooded" && (floodDepth || floodVehicle) && (
         <div className="tj-flood-summary">
-          {floodDepthLabel && <span>Depth: {floodDepthLabel}</span>}
-          {floodVehicleLabel && <span>Access: {floodVehicleLabel}</span>}
+          {floodDepth && (
+            <span>
+              {t("flood.depth")}: {floodDepth}
+            </span>
+          )}
+          {floodVehicle && (
+            <span>
+              {t("flood.access")}: {floodVehicle}
+            </span>
+          )}
         </div>
       )}
 
       {editing && (
-        <p className="tj-hint tj-hint--warn">
-          Tap &quot;Move marker&quot;, drag the marker, then tap &quot;Fix marker&quot;.
-        </p>
+        <p className="tj-hint tj-hint--warn">{t("postDetail.moveMarkerHint")}</p>
       )}
 
       <PostSocialActions
@@ -238,20 +253,32 @@ export default function PostBottomSheet({
         onShare={() => void handleShare()}
       />
 
+      {user &&
+      post.ownerUid &&
+      !post.anonymous &&
+      post.ownerUid !== user.uid &&
+      onAskReporter ? (
+        <button
+          type="button"
+          className="tj-btn tj-btn--secondary tj-btn--compact"
+          onClick={() => onAskReporter(post)}
+        >
+          {t("postDetail.askReporter")}
+        </button>
+      ) : null}
+
       {confirmCount > 0 && (
         <p className="tj-social-count">
-          {confirmCount} confirm{confirmCount === 1 ? "" : "s"}
+          {t("postDetail.confirmCount", { count: confirmCount })}
         </p>
       )}
 
-      {!user && (
-        <p className="tj-hint">Sign in to confirm reports or add comments.</p>
-      )}
+      {!user && <p className="tj-hint">{t("comments.signInToInteract")}</p>}
 
       <div className="tj-comments">
-        <h3 className="tj-comments__title">Comments</h3>
+        <h3 className="tj-comments__title">{t("comments.title")}</h3>
         {comments.length === 0 ? (
-          <p className="tj-comments__empty">No comments yet</p>
+          <p className="tj-comments__empty">{t("comments.empty")}</p>
         ) : (
           <ul className="tj-comments__list">
             {comments.map((c) => (
@@ -270,7 +297,9 @@ export default function PostBottomSheet({
             className="tj-input"
             value={commentText}
             onChange={(e) => setCommentText(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
-            placeholder={user ? "Add a comment…" : "Sign in to comment…"}
+            placeholder={
+              user ? t("comments.addPlaceholder") : t("comments.signInPlaceholder")
+            }
             disabled={!user}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleAddComment();
@@ -282,7 +311,7 @@ export default function PostBottomSheet({
             onClick={() => void handleAddComment()}
             disabled={submittingComment || !commentText.trim() || !user}
           >
-            Send
+            {t("postDetail.send")}
           </button>
         </div>
       </div>
@@ -291,14 +320,14 @@ export default function PostBottomSheet({
         {canModify && (
           <>
             <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onEdit}>
-              Edit
+              {t("postDetail.edit")}
             </button>
             <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onDelete}>
-              Delete
+              {t("postDetail.delete")}
             </button>
             {!editing ? (
               <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onMoveMarker}>
-                Move marker
+                {t("postDetail.moveMarker")}
               </button>
             ) : (
               <button
@@ -307,20 +336,20 @@ export default function PostBottomSheet({
                 onClick={onFixMarker}
                 disabled={!dragging}
               >
-                Fix marker
+                {t("postDetail.fixMarker")}
               </button>
             )}
           </>
         )}
         <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onFocus}>
-          Focus
+          {t("postDetail.focus")}
         </button>
         <button
           type="button"
           className="tj-btn tj-btn--ghost tj-btn--compact"
           onClick={() => openNavigation(post.lat, post.lng)}
         >
-          Maps
+          {t("postDetail.mapsShort")}
         </button>
         <button
           type="button"

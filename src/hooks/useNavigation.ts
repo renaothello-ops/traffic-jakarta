@@ -208,7 +208,7 @@ export function useNavigation({
         offRouteCountRef.current = 0;
         lastRerouteAtRef.current = now;
         setIsRerouting(true);
-        setRerouteMessage("Recalculating route…");
+        setRerouteMessage("nav.recalculating");
         void onReroute({ lat: fix.lat, lng: fix.lng }).finally(() => {
           setIsRerouting(false);
           setRerouteMessage(null);
@@ -315,7 +315,7 @@ export function useNavigation({
   const startWatch = useCallback(() => {
     stopTracking();
     setLocationStatus("waiting");
-    setLocationMessage("Waiting for location…");
+    setLocationMessage("nav.locationWaiting");
 
     if (simulationActive && import.meta.env.DEV) {
       simCursorRef.current = null;
@@ -334,7 +334,7 @@ export function useNavigation({
 
     if (!navigator.geolocation) {
       setLocationStatus("error");
-      setLocationMessage("Geolocation is not supported.");
+      setLocationMessage("nav.locationUnsupported");
       return;
     }
 
@@ -352,15 +352,13 @@ export function useNavigation({
       (err) => {
         if (err.code === 1) {
           setLocationStatus("denied");
-          setLocationMessage(
-            "Location access denied. Enable location in browser settings."
-          );
+          setLocationMessage("nav.locationDeniedLong");
         } else if (err.code === 3) {
           setLocationStatus("waiting");
-          setLocationMessage("Waiting for location…");
+          setLocationMessage("nav.locationWaiting");
         } else {
           setLocationStatus("error");
-          setLocationMessage("Location temporarily unavailable.");
+          setLocationMessage("nav.locationUnavailable");
         }
       },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 12_000 }

@@ -1,6 +1,8 @@
+import { useTranslation } from "react-i18next";
 import type {
   FloodDepth,
   FloodVehicleAccess,
+  PostAudience,
   PostType,
 } from "../types";
 import ReportTypePicker from "./ReportTypePicker";
@@ -29,6 +31,11 @@ type Props = {
   onFloodVehicleChange: (v: FloodVehicleAccess) => void;
   onSubmit: () => void;
   onClose: () => void;
+  textAnalysisHint?: string | null;
+  postAudience: PostAudience;
+  postAnonymous: boolean;
+  onPostAudienceChange: (v: PostAudience) => void;
+  onPostAnonymousChange: (v: boolean) => void;
 };
 
 export default function PostComposer({
@@ -51,54 +58,46 @@ export default function PostComposer({
   onFloodVehicleChange,
   onSubmit,
   onClose,
+  textAnalysisHint,
+  postAudience,
+  postAnonymous,
+  onPostAudienceChange,
+  onPostAnonymousChange,
 }: Props) {
+  const { t } = useTranslation();
+
   if (!locationConfirmed) {
     return (
       <div className="tj-sheet-backdrop tj-sheet-backdrop--map-visible">
         <div className="tj-sheet tj-sheet--location-pick">
           <div className="tj-sheet__handle" />
           <div className="tj-sheet__header">
-            <h2 className="tj-sheet__title">Choose location</h2>
+            <h2 className="tj-sheet__title">{t("composer.chooseLocation")}</h2>
             <button
               type="button"
               className="tj-icon-btn"
               onClick={onClose}
-              aria-label="Cancel"
+              aria-label={t("common.cancel")}
             >
               ✕
             </button>
           </div>
 
-          <p className="tj-hint tj-hint--emphasis">
-            Move the marker to the correct location, or move the map and place
-            the pin at the map center.
-          </p>
+          <p className="tj-hint tj-hint--emphasis">{t("composer.locationHint")}</p>
 
           <div className="tj-location-actions">
-            <button
-              type="button"
-              className="tj-btn tj-btn--ghost"
-              onClick={onUseMapCenter}
-            >
-              Place at map center
+            <button type="button" className="tj-btn tj-btn--ghost" onClick={onUseMapCenter}>
+              {t("composer.placeAtMapCenter")}
             </button>
             {hasMyLocation && (
-              <button
-                type="button"
-                className="tj-btn tj-btn--ghost"
-                onClick={onUseMyLocation}
-              >
-                Use my location
+              <button type="button" className="tj-btn tj-btn--ghost" onClick={onUseMyLocation}>
+                {t("composer.useMyLocation")}
               </button>
             )}
           </div>
 
-          <button
-            type="button"
-            className="tj-btn tj-btn--primary"
-            onClick={onConfirmLocation}
-          >
-            Use this location
+          <button type="button" className="tj-btn tj-btn--primary" onClick={onConfirmLocation}>
+            {t("composer.useThisLocation")}
           </button>
         </div>
       </div>
@@ -110,34 +109,56 @@ export default function PostComposer({
       <div className="tj-sheet tj-sheet--composer">
         <div className="tj-sheet__handle" />
         <div className="tj-sheet__header">
-          <h2 className="tj-sheet__title">New report</h2>
-          <button type="button" className="tj-icon-btn" onClick={onClose} aria-label="Close">
+          <h2 className="tj-sheet__title">{t("composer.titleNew")}</h2>
+          <button type="button" className="tj-icon-btn" onClick={onClose} aria-label={t("common.close")}>
             ✕
           </button>
         </div>
 
         <ReportTypePicker value={type} onChange={onTypeChange} />
 
+        <div className="tj-post-visibility">
+          <label className="tj-label">
+            {t("composer.postAudience")}
+            <select
+              className="tj-select"
+              value={postAudience}
+              onChange={(e) => onPostAudienceChange(e.target.value as PostAudience)}
+            >
+              <option value="public">{t("composer.audiencePublic")}</option>
+              <option value="followers">{t("composer.audienceFollowers")}</option>
+            </select>
+          </label>
+          {postAudience === "public" ? (
+            <label className="tj-toggle-row">
+              <span>{t("composer.anonymousPublicReport")}</span>
+              <input
+                type="checkbox"
+                checked={postAnonymous}
+                onChange={(e) => onPostAnonymousChange(e.target.checked)}
+              />
+            </label>
+          ) : null}
+        </div>
+
         {type === "flooded" && (
           <div className="tj-flood-fields">
             <label className="tj-label">
-              Flood depth
+              {t("composer.floodDepth")}
               <select
                 className="tj-select"
                 value={floodDepth ?? "unknown"}
-                onChange={(e) =>
-                  onFloodDepthChange(e.target.value as FloodDepth)
-                }
+                onChange={(e) => onFloodDepthChange(e.target.value as FloodDepth)}
               >
                 {FLOOD_DEPTH_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {t(`flood.depthOptions.${o.value}`)}
                   </option>
                 ))}
               </select>
             </label>
             <label className="tj-label">
-              Vehicle accessibility
+              {t("composer.vehicleAccess")}
               <select
                 className="tj-select"
                 value={floodVehicleAccess ?? "not_passable"}
@@ -147,7 +168,7 @@ export default function PostComposer({
               >
                 {FLOOD_VEHICLE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {t(`flood.vehicleOptions.${o.value}`)}
                   </option>
                 ))}
               </select>
@@ -159,12 +180,18 @@ export default function PostComposer({
           className="tj-textarea"
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
-          placeholder="Describe what is happening on this road (optional)"
+          placeholder={t("composer.describeOptional")}
           rows={3}
         />
 
+        {textAnalysisHint ? (
+          <p className="tj-hint tj-text-analysis-hint" role="note">
+            {textAnalysisHint}
+          </p>
+        ) : null}
+
         <label className="tj-file-label">
-          📷 Photo / camera
+          📷 {t("composer.photoCamera")}
           <input
             type="file"
             accept="image/*"
@@ -187,7 +214,7 @@ export default function PostComposer({
         </label>
 
         {image && (
-          <img src={image} alt="Report preview" className="tj-preview-img" />
+          <img src={image} alt={t("composer.reportPreviewAlt")} className="tj-preview-img" />
         )}
 
         {error && <p className="tj-error">{error}</p>}
@@ -198,7 +225,7 @@ export default function PostComposer({
           onClick={onSubmit}
           disabled={submitting}
         >
-          {submitting ? "Posting…" : "Post report"}
+          {submitting ? t("common.posting") : t("composer.postReport")}
         </button>
       </div>
     </div>

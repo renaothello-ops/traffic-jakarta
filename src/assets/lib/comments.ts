@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -10,6 +11,14 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import {
+  createInAppNotification,
+  shouldDeliverInApp,
+} from "./inAppNotifications";
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  mergeUserProfileFromFirestore,
+} from "./userProfileDefaults";
 import type { Comment } from "../../types";
 import { displayNameOrFallback } from "./identity";
 import { MAX_COMMENT_LENGTH, sanitizeText } from "./validation";
@@ -39,6 +48,42 @@ export async function addComment(
     createdAt: Date.now(),
     createdAtServer: serverTimestamp(),
   });
+
+  try {
+    const postSnap = await getDoc(doc(db, "posts", postId));
+    const ownerUid = postSnap.data()?.ownerUid as string | undefined;
+    if (!ownerUid || ownerUid === authUid) return;
+
+    const ownerSnap = await getDoc(doc(db, "users", ownerUid));
+    const ownerProfile = ownerSnap.exists()
+      ? mergeUserProfileFromFirestore(
+          ownerUid,
+          ownerSnap.data() as Record<string, unknown>,
+          null,
+          null,
+          null
+        )
+      : null;
+    const settings =
+      ownerProfile?.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS;
+    if (
+      !shouldDeliverInApp(settings, "comment_on_post") ||
+      !settings.communityActivity
+    ) {
+      return;
+    }
+
+    await createInAppNotification({
+      recipientUid: ownerUid,
+      actorUid: authUid,
+      type: "comment_on_post",
+      titleKey: "notifications.types.comment_on_post",
+      bodyKey: "notifications.body.comment_on_post",
+      relatedPostId: postId,
+    });
+  } catch (e) {
+    console.warn("[addComment] notification skipped:", e);
+  }
 }
 
 export async function updateComment(

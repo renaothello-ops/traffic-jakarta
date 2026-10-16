@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
-import maplibregl from "maplibre-gl";
+import { maplibregl } from "../assets/lib/maplibreSetup";
 
 type Props = {
   mapRef: React.RefObject<MapRef | null>;
   mapReady: boolean;
   position: { lat: number; lng: number } | null;
   accuracy?: number | null;
+  /** Geographic heading in degrees (0 = north, clockwise). */
   heading?: number | null;
   navigating?: boolean;
 };
@@ -26,6 +27,11 @@ export default function CurrentLocationMarker({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const accuracyRef = useRef<HTMLDivElement | null>(null);
   const coneRef = useRef<HTMLDivElement | null>(null);
+  const headingRef = useRef<number | null>(heading);
+
+  useEffect(() => {
+    headingRef.current = heading;
+  }, [heading]);
 
   useEffect(() => {
     const el = document.createElement("div");
@@ -69,7 +75,6 @@ export default function CurrentLocationMarker({
   useEffect(() => {
     const wrap = wrapRef.current;
     const accuracyEl = accuracyRef.current;
-    const coneEl = coneRef.current;
     if (!wrap) return;
 
     wrap.classList.toggle("tj-my-location-wrap--nav", navigating);
@@ -82,16 +87,7 @@ export default function CurrentLocationMarker({
     } else if (accuracyEl) {
       accuracyEl.style.display = navigating ? "block" : "none";
     }
-
-    if (coneEl) {
-      if (navigating && heading != null && Number.isFinite(heading)) {
-        coneEl.style.display = "block";
-        coneEl.style.transform = `rotate(${heading}deg)`;
-      } else {
-        coneEl.style.display = "none";
-      }
-    }
-  }, [accuracy, heading, navigating]);
+  }, [accuracy, navigating]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -100,6 +96,21 @@ export default function CurrentLocationMarker({
     if (!map || !marker) return;
 
     let active = true;
+
+    const updateConeRotation = () => {
+      const coneEl = coneRef.current;
+      if (!coneEl) return;
+
+      const h = headingRef.current;
+      if (h == null || !Number.isFinite(h)) {
+        coneEl.style.display = "none";
+        return;
+      }
+
+      coneEl.style.display = "block";
+      const mapBearing = map.getBearing();
+      coneEl.style.transform = `rotate(${h - mapBearing}deg)`;
+    };
 
     const sync = () => {
       if (!active) return;
@@ -111,6 +122,7 @@ export default function CurrentLocationMarker({
 
       marker.setLngLat([position.lng, position.lat]);
       marker.addTo(map);
+      updateConeRotation();
 
       if (import.meta.env.DEV) {
         console.info("CURRENT_LOCATION_MARKER_VISIBLE", {
@@ -131,13 +143,34 @@ export default function CurrentLocationMarker({
     sync();
     map.on("load", sync);
     map.on("styledata", onStyleData);
+    map.on("rotate", updateConeRotation);
+    map.on("move", updateConeRotation);
 
     return () => {
       active = false;
       map.off("load", sync);
       map.off("styledata", onStyleData);
+      map.off("rotate", updateConeRotation);
+      map.off("move", updateConeRotation);
     };
   }, [mapRef, mapReady, position?.lat, position?.lng]);
+
+  // Re-apply cone when geographic heading changes (map bearing handled above).
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current?.getMap();
+    const coneEl = coneRef.current;
+    if (!map || !coneEl) return;
+
+    const h = heading;
+    if (h == null || !Number.isFinite(h)) {
+      coneEl.style.display = "none";
+      return;
+    }
+
+    coneEl.style.display = "block";
+    coneEl.style.transform = `rotate(${h - map.getBearing()}deg)`;
+  }, [heading, mapReady, mapRef]);
 
   return null;
 }

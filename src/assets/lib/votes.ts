@@ -2,11 +2,20 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import {
+  createInAppNotification,
+  shouldDeliverInApp,
+} from "./inAppNotifications";
+import {
+  DEFAULT_NOTIFICATION_SETTINGS,
+  mergeUserProfileFromFirestore,
+} from "./userProfileDefaults";
 import type { Vote, VoteType } from "../../types";
 
 function votesCol(postId: string) {
@@ -54,6 +63,42 @@ export async function setUserVote(
     createdAt: Date.now(),
     createdAtServer: serverTimestamp(),
   });
+
+  try {
+    const postSnap = await getDoc(doc(db, "posts", postId));
+    const ownerUid = postSnap.data()?.ownerUid as string | undefined;
+    if (!ownerUid || ownerUid === authUid) return;
+
+    const ownerSnap = await getDoc(doc(db, "users", ownerUid));
+    const ownerProfile = ownerSnap.exists()
+      ? mergeUserProfileFromFirestore(
+          ownerUid,
+          ownerSnap.data() as Record<string, unknown>,
+          null,
+          null,
+          null
+        )
+      : null;
+    const settings =
+      ownerProfile?.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS;
+    if (
+      !shouldDeliverInApp(settings, "vote_on_post") ||
+      !settings.communityActivity
+    ) {
+      return;
+    }
+
+    await createInAppNotification({
+      recipientUid: ownerUid,
+      actorUid: authUid,
+      type: "vote_on_post",
+      titleKey: "notifications.types.vote_on_post",
+      bodyKey: "notifications.body.vote_on_post",
+      relatedPostId: postId,
+    });
+  } catch (e) {
+    console.warn("[setUserVote] notification skipped:", e);
+  }
 }
 
 export async function castVote(

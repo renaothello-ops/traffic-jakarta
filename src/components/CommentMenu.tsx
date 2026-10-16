@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   onEdit: () => void;
@@ -6,6 +7,7 @@ type Props = {
 };
 
 export default function CommentMenu({ onEdit, onDelete }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +33,7 @@ export default function CommentMenu({ onEdit, onDelete }: Props) {
       <button
         type="button"
         className="tj-comment-menu__trigger"
-        aria-label="Comment options"
+        aria-label={t("comments.optionsAria")}
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
@@ -48,7 +50,7 @@ export default function CommentMenu({ onEdit, onDelete }: Props) {
               onEdit();
             }}
           >
-            Edit comment
+            {t("comments.editComment")}
           </button>
           <button
             type="button"
@@ -59,7 +61,7 @@ export default function CommentMenu({ onEdit, onDelete }: Props) {
               onDelete();
             }}
           >
-            Delete comment
+            {t("comments.deleteComment")}
           </button>
         </div>
       )}

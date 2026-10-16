@@ -1,7 +1,8 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
-import maplibregl from "maplibre-gl";
+import type { Feature, LineString } from "geojson";
+import { maplibregl } from "../assets/lib/maplibreSetup";
 
 import type {
   AppTab,
@@ -11,13 +12,15 @@ import type {
   FloodDepth,
   FloodVehicleAccess,
   Post,
+  PostAudience,
   PostType,
+  TrafficThreadSummary,
   RoadAccess,
   RoutePlan,
 } from "../types";
 import {
   createPost,
-  createPostErrorMessage,
+  createPostErrorMessageKey,
   listenActivePosts,
   updatePost,
   deletePost,
@@ -38,7 +41,7 @@ import {
 } from "../assets/lib/search";
 import { calculateRoute, getRouteBounds } from "../assets/lib/routing";
 import { isMinePost } from "../assets/lib/identity";
-import { normalizePostType, REPORT_TYPE_META } from "../assets/lib/reportTypes";
+import { normalizePostType } from "../assets/lib/reportTypes";
 import { resolveQuickReportLocation } from "../assets/lib/quickReportLocation";
 import { useNavigationRouteWarnings } from "../hooks/useNavigationRouteWarnings";
 import { useEnsureTrafficJakartaLayerOrder } from "../hooks/useEnsureTrafficJakartaLayerOrder";
@@ -62,6 +65,12 @@ import {
   saveAuthReturnState,
 } from "../assets/lib/authReturnState";
 import { useAuth } from "../contexts/useAuth";
+import { useUserProfile } from "../contexts/UserProfileContext";
+import { formatPublicAuthorLabel } from "../assets/lib/publicAuthor";
+import {
+  createInAppNotification,
+  shouldDeliverInApp,
+} from "../assets/lib/inAppNotifications";
 import { useTomTomTrafficLayer } from "../hooks/useTomTomTrafficLayer";
 import { useMapStyleDataSync } from "../hooks/useMapStyleDataSync";
 import { useEnrichedCommunityRoads } from "../hooks/useEnrichedCommunityRoads";
@@ -79,6 +88,19 @@ import PostComposer from "../components/PostComposer";
 import PostBottomSheet from "../components/PostBottomSheet";
 import CommentPanel from "../components/CommentPanel";
 import ProfilePanel from "../components/ProfilePanel";
+import PublicProfileSheet from "../components/PublicProfileSheet";
+import UserSearchSheet from "../components/UserSearchSheet";
+import FavoritePlacesSheet from "../components/FavoritePlacesSheet";
+import { useFollowingUids } from "../hooks/useFollowingUids";
+import { listenFavoritePlaces } from "../assets/lib/favoritePlaces";
+import { syncFavoritePlaceAlertsFromPosts } from "../assets/lib/favoritePlaceAlerts";
+import type { FavoritePlace } from "../types";
+import TrafficMessagesSheet from "../components/TrafficMessagesSheet";
+import TrafficChatSheet from "../components/TrafficChatSheet";
+import {
+  openTrafficChatWithUser,
+  startChatWithReportAuthor,
+} from "../assets/lib/trafficChat";
 import BottomNav from "../components/BottomNav";
 import EditPostSheet from "../components/EditPostSheet";
 import Toast from "../components/Toast";
@@ -92,12 +114,28 @@ import NavigationHud from "../components/NavigationHud";
 import QuickReportSheet from "../components/QuickReportSheet";
 import NavRouteReportBanner from "../components/NavRouteReportBanner";
 import TrafficIntelligenceDevPanel from "../components/TrafficIntelligenceDevPanel";
+import MapNotificationBell from "../components/MapNotificationBell";
+import MapMessagesButton from "../components/MapMessagesButton";
+import { useMessageInboxSummary } from "../hooks/useMessageInboxSummary";
+import NotificationCenterSheet from "../components/settings/NotificationCenterSheet";
+import TrafficIntelligenceDetailSheet from "../components/TrafficIntelligenceDetailSheet";
+import { useUnifiedNotifications } from "../hooks/useUnifiedNotifications";
+import { syncTrafficIntelligenceAlerts } from "../assets/lib/trafficAlertSync";
+import type { LocalTrafficNotification } from "../assets/lib/localTrafficNotifications";
+import { haversineMeters } from "../assets/lib/geo";
 import { useNavigation } from "../hooks/useNavigation";
+import { useDeviceHeading } from "../hooks/useDeviceHeading";
+import { useTrafficIntelligence } from "../hooks/useTrafficIntelligence";
+import { useNearbyCommentCounts } from "../hooks/useNearbyCommentCounts";
+import { summarizeRouteIntelligence } from "../intelligence/route/routeIncidentSummary";
+import { analyzeTrafficTextRuleBased } from "../intelligence/textAnalysis/ruleBasedAnalyzer";
+import { useTranslation } from "react-i18next";
 
 const JAKARTA = { lat: -6.2, lng: 106.8 };
 const DRAFT_STORAGE_KEY = "traffic_jakarta_draft";
 const SELECTED_POST_KEY = "traffic_jakarta_selected_post";
 const FILTER_KEY = "traffic_jakarta_filter";
+const SMART_TRAFFIC_KEY = "traffic_jakarta_smart_traffic";
 
 function loadSelectedPostFromStorage(): Post | null {
   const raw = localStorage.getItem(SELECTED_POST_KEY);
@@ -147,6 +185,8 @@ function buildComposerDraft(
 export default function MapScreen() {
   const mapRef = useRef<MapRef | null>(null);
   const { user, loading: authLoading, signIn } = useAuth();
+  const { profile: userProfile } = useUserProfile();
+  const { t } = useTranslation();
   const pendingPostIdRef = useRef<string | null>(null);
   const returnStateRestoredRef = useRef(false);
 
@@ -165,6 +205,18 @@ export default function MapScreen() {
 
   const [openComposer, setOpenComposer] = useState(false);
   const [type, setType] = useState<PostType>("heavy_traffic");
+  const [postAudience, setPostAudience] = useState<PostAudience>("public");
+  const [postAnonymous, setPostAnonymous] = useState(false);
+  const [publicProfileUid, setPublicProfileUid] = useState<string | null>(null);
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [activeChat, setActiveChat] = useState<TrafficThreadSummary | null>(null);
+  const [chatReportContext, setChatReportContext] = useState<Post | null>(null);
+  const [userSearchOpen, setUserSearchOpen] = useState(false);
+  const [favoritePlacesOpen, setFavoritePlacesOpen] = useState(false);
+  const [favoritePickMode, setFavoritePickMode] = useState(false);
+  const [favoritePlaces, setFavoritePlaces] = useState<FavoritePlace[]>([]);
+
+  const followingUids = useFollowingUids(user?.uid);
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [draftPos, setDraftPos] = useState<{ lat: number; lng: number } | null>(null);
@@ -251,9 +303,113 @@ export default function MapScreen() {
   const [routing, setRouting] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [destPickMode, setDestPickMode] = useState(false);
-  const [postsLoadError, setPostsLoadError] = useState<string | null>(null);
-  const [roadsLoadError, setRoadsLoadError] = useState<string | null>(null);
-  const firestoreError = postsLoadError ?? roadsLoadError;
+  const [postsLoadErrorKey, setPostsLoadErrorKey] = useState<string | null>(null);
+  const [roadsLoadErrorKey, setRoadsLoadErrorKey] = useState<string | null>(null);
+  const firestoreErrorKey = postsLoadErrorKey ?? roadsLoadErrorKey;
+
+  const [smartTrafficEnabled, setSmartTrafficEnabled] = useState(() => {
+    const stored = localStorage.getItem(SMART_TRAFFIC_KEY);
+    if (stored === "0") return false;
+    if (stored === "1") return true;
+    return true;
+  });
+  const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
+  const [trafficDetailOpen, setTrafficDetailOpen] = useState(false);
+  const [trafficDetailAlert, setTrafficDetailAlert] =
+    useState<LocalTrafficNotification | null>(null);
+
+  const {
+    items: unifiedNotifications,
+    unreadCount: notificationUnreadCount,
+    markRead: markNotificationReadUnified,
+    markAllRead: markAllNotificationsReadUnified,
+  } = useUnifiedNotifications(user?.uid);
+  const messageInbox = useMessageInboxSummary(user?.uid);
+  const [composerTextAnalysisHint, setComposerTextAnalysisHint] = useState<
+    string | null
+  >(null);
+
+  const intelligenceLat = myPos?.lat ?? center.lat;
+  const intelligenceLng = myPos?.lng ?? center.lng;
+
+  const nearbyCommentCounts = useNearbyCommentCounts(
+    smartTrafficEnabled && activeTab === "map",
+    posts,
+    intelligenceLat,
+    intelligenceLng
+  );
+
+  const { result: mapIntelligence, loadingTomTom: intelligenceTomTomLoading } =
+    useTrafficIntelligence({
+      enabled: smartTrafficEnabled && activeTab === "map",
+      lat: intelligenceLat,
+      lng: intelligenceLng,
+      posts: visibleMapPosts,
+      commentCountByPostId: nearbyCommentCounts,
+      tomTomRasterVisible: mapReady,
+    });
+
+  const nearbyAlertSentRef = useRef(false);
+  useEffect(() => {
+    if (!user?.uid || !userProfile || !mapIntelligence) return;
+    if (mapIntelligence.trend.trend !== "major_incident_detected") return;
+    if (mapIntelligence.nearbyReportCount < 2) return;
+    if (!shouldDeliverInApp(userProfile.notificationSettings, "nearby_incident")) {
+      return;
+    }
+    if (nearbyAlertSentRef.current) return;
+    nearbyAlertSentRef.current = true;
+    void createInAppNotification({
+      recipientUid: user.uid,
+      actorUid: user.uid,
+      type: "nearby_incident",
+      titleKey: "notifications.types.nearby_incident",
+      bodyKey: "notifications.body.nearby_incident",
+      allowSelfRecipient: true,
+    }).catch(() => {
+      nearbyAlertSentRef.current = false;
+    });
+  }, [user?.uid, userProfile, mapIntelligence]);
+
+  useEffect(() => {
+    if (!userProfile || !smartTrafficEnabled || !mapIntelligence) return;
+    syncTrafficIntelligenceAlerts(mapIntelligence, userProfile.notificationSettings);
+  }, [userProfile, smartTrafficEnabled, mapIntelligence]);
+
+  useEffect(() => {
+    if (!userProfile) return;
+    const on = userProfile.notificationSettings.trafficAlerts;
+    setSmartTrafficEnabled(on);
+    localStorage.setItem(SMART_TRAFFIC_KEY, on ? "1" : "0");
+  }, [userProfile?.notificationSettings.trafficAlerts, userProfile?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setFavoritePlaces([]);
+      return;
+    }
+    return listenFavoritePlaces(user.uid, setFavoritePlaces);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!userProfile || !favoritePlaces.length) return;
+    syncFavoritePlaceAlertsFromPosts(
+      favoritePlaces,
+      posts.filter((p) => p.audience !== "followers"),
+      userProfile.notificationSettings
+    );
+  }, [userProfile, favoritePlaces, posts]);
+
+  const routeIntelligence = useMemo(() => {
+    if (!routePlan) return null;
+    const route = routePlan.routes[routePlan.selectedIndex];
+    if (!route?.coordinates?.length) return null;
+    return summarizeRouteIntelligence({
+      posts: visibleMapPosts,
+      routeCoordinates: route.coordinates,
+      filterMin,
+    });
+  }, [routePlan, visibleMapPosts, filterMin]);
 
   useEffect(() => {
     let active = true;
@@ -263,11 +419,11 @@ export default function MapScreen() {
       (next) => {
         if (!active) return;
         setPosts(next);
-        setPostsLoadError(null);
+        setPostsLoadErrorKey(null);
       },
       (message) => {
         if (!active) return;
-        setPostsLoadError(message);
+        setPostsLoadErrorKey(message);
       }
     );
 
@@ -284,11 +440,11 @@ export default function MapScreen() {
       (next) => {
         if (!active) return;
         setCommunityRoads(next);
-        setRoadsLoadError(null);
+        setRoadsLoadErrorKey(null);
       },
       (message) => {
         if (!active) return;
-        setRoadsLoadError(message);
+        setRoadsLoadErrorKey(message);
       }
     );
 
@@ -411,7 +567,7 @@ export default function MapScreen() {
         if (requestId !== searchRequestIdRef.current) return;
         setSuggestions([]);
         if (error instanceof PlacesSearchUnavailableError) {
-          setSearchError("Search temporarily unavailable");
+          setSearchError(t("errors.searchUnavailable"));
           if (import.meta.env.DEV) {
             console.info("[places-search]", {
               endpoint: "/api/places",
@@ -420,7 +576,7 @@ export default function MapScreen() {
             });
           }
         } else {
-          setSearchError("Search temporarily unavailable");
+          setSearchError(t("errors.searchUnavailable"));
         }
       } finally {
         if (requestId === searchRequestIdRef.current) {
@@ -472,6 +628,10 @@ export default function MapScreen() {
       focusLocation?: boolean;
       onSuccess?: (point: { lat: number; lng: number }) => void;
     }) => {
+      if (userProfile?.privacySettings.useLocation === false) {
+        setLocErr(t("errors.locationPrivacyOff"));
+        return;
+      }
       const shouldFly = options?.fly ?? false;
       const targetZoom = options?.targetZoom ?? CURRENT_LOCATION_FOCUS_ZOOM;
       setLocErr(null);
@@ -499,7 +659,7 @@ export default function MapScreen() {
         }
       );
     },
-    [mapReady, flyToPoint]
+    [mapReady, flyToPoint, userProfile?.privacySettings.useLocation]
   );
 
   const lastCommunityUpdateRef = useRef(Date.now());
@@ -508,6 +668,7 @@ export default function MapScreen() {
   }, [posts]);
 
   useEffect(() => {
+    if (userProfile?.privacySettings.useLocation === false) return;
     requestCurrentPosition(
       (point) => {
         setMyPos(point);
@@ -523,7 +684,7 @@ export default function MapScreen() {
         }
       }
     );
-  }, []);
+  }, [userProfile?.privacySettings.useLocation]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -563,7 +724,7 @@ export default function MapScreen() {
         return true;
       } catch (e) {
         setRouteError(
-          e instanceof Error ? e.message : "Could not recalculate route."
+          e instanceof Error ? e.message : t("errors.routeRecalcFailed")
         );
         return false;
       } finally {
@@ -584,8 +745,16 @@ export default function MapScreen() {
   const isNavigating =
     nav.phase === "navigating" || nav.phase === "arrived";
 
+  const { heading: browseHeading, requestCompassAccess } = useDeviceHeading({
+    active: !isNavigating && myPos != null,
+  });
+
   const locationMarkerPosition =
     nav.displayPosition ?? (myPos ? { lat: myPos.lat, lng: myPos.lng } : null);
+
+  const locationHeading = isNavigating
+    ? (nav.displayPosition?.heading ?? null)
+    : browseHeading;
 
   const quickReportLocation = useMemo(
     () => resolveQuickReportLocation(nav.rawGps, nav.gpsFix),
@@ -639,6 +808,25 @@ export default function MapScreen() {
     setBuildingExtrusionVisible(map, mapViewMode === "3d");
   }, [mapReady, mapViewMode, mapRef]);
 
+  useEffect(() => {
+    if (!openComposer) {
+      setComposerTextAnalysisHint(null);
+      return;
+    }
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setComposerTextAnalysisHint(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const analysis = analyzeTrafficTextRuleBased(trimmed, type);
+      setComposerTextAnalysisHint(
+        `Text insight (rule-based): ${analysis.category.replace(/_/g, " ")} · severity ${Math.round(analysis.severity * 100)}% · confidence ${Math.round(analysis.confidence * 100)}%`
+      );
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [openComposer, text, type]);
+
   const routeWarnings = useNavigationRouteWarnings({
     isNavigating,
     posts: visibleMapPosts,
@@ -658,7 +846,7 @@ export default function MapScreen() {
       if (!quickReportLocation) return;
       const currentUser = auth.currentUser;
       if (!currentUser) {
-        setQuickReportError("Please sign in to post.");
+        setQuickReportError(t("errors.signInToPost"));
         return;
       }
       setQuickReportSubmitting(true);
@@ -672,6 +860,7 @@ export default function MapScreen() {
           imageURL: input.image ?? undefined,
           ownerUid: currentUser.uid,
           displayName: currentUser.displayName,
+          authorLabel: formatPublicAuthorLabel(userProfile),
           ...(input.type === "flooded"
             ? {
                 floodDepth: "unknown" as const,
@@ -679,10 +868,14 @@ export default function MapScreen() {
               }
             : {}),
         });
-        setToast(`${REPORT_TYPE_META[input.type].label} reported`);
+        setToast(
+          t("quickReport.postedToast", {
+            type: t(`reportTypes.${input.type}.label`),
+          })
+        );
         setQuickReportOpen(false);
       } catch {
-        setQuickReportError("Could not post report");
+        setQuickReportError(t("errors.quickPostFailed"));
       } finally {
         setQuickReportSubmitting(false);
       }
@@ -694,7 +887,7 @@ export default function MapScreen() {
     async (dest: Destination, origin?: { lat: number; lng: number }) => {
       const from = origin ?? myPos;
       if (!from) {
-        setRouteError("Current location is required to calculate a route.");
+        setRouteError(t("errors.routeNeedsLocation"));
         return;
       }
       setRouting(true);
@@ -706,7 +899,7 @@ export default function MapScreen() {
       } catch (e) {
         setRoutePlan(null);
         setRouteError(
-          e instanceof Error ? e.message : "Could not calculate route."
+          e instanceof Error ? e.message : t("errors.routeFailed")
         );
       } finally {
         setRouting(false);
@@ -758,10 +951,10 @@ export default function MapScreen() {
         selectDestination(dest, true);
       } catch (error) {
         if (error instanceof PlacesSearchUnavailableError) {
-          setSearchError("Search temporarily unavailable");
+          setSearchError(t("errors.searchUnavailable"));
         } else {
           setSearchError(
-            error instanceof Error ? error.message : "Could not load place"
+            error instanceof Error ? error.message : t("errors.placeLoadFailed")
           );
         }
       }
@@ -805,7 +998,7 @@ export default function MapScreen() {
           {
             lat: e.lngLat.lat,
             lng: e.lngLat.lng,
-            name: "Selected point",
+            name: t("map.selectedPoint"),
           },
           false
         );
@@ -892,7 +1085,7 @@ export default function MapScreen() {
     if (!locationConfirmed) return;
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      setComposerError("Please sign in to post.");
+      setComposerError(t("errors.composerSignIn"));
       return;
     }
     setSubmitting(true);
@@ -909,6 +1102,9 @@ export default function MapScreen() {
         imageURL: image ?? undefined,
         ownerUid: currentUser.uid,
         displayName: currentUser.displayName,
+        authorLabel: formatPublicAuthorLabel(userProfile),
+        audience: postAudience,
+        anonymous: postAnonymous && postAudience === "public",
         ...(type === "flooded"
           ? { floodDepth, floodVehicleAccess }
           : {}),
@@ -916,10 +1112,10 @@ export default function MapScreen() {
 
       resetDraft();
       setOpenComposer(false);
-      setToast("Report posted");
+      setToast(t("toast.reportPosted"));
     } catch (error) {
       console.error("CREATE_POST_ERROR", error);
-      setComposerError(createPostErrorMessage(error));
+      setComposerError(t(createPostErrorMessageKey(error)));
     } finally {
       setSubmitting(false);
     }
@@ -932,6 +1128,7 @@ export default function MapScreen() {
       if (map) requestManualTomTomTrafficRefresh(map);
       return;
     }
+    void requestCompassAccess();
     requestLocation({
       fly: true,
       targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
@@ -966,11 +1163,11 @@ export default function MapScreen() {
     });
     setDraggingPostId(null);
     setEditing(null);
-    setToast("Report updated");
+    setToast(t("toast.reportUpdated"));
   }
 
   async function removePost(p: Post) {
-    const ok = confirm("Delete this report?");
+    const ok = confirm(t("confirm.deleteReport"));
     if (!ok) return;
     await deletePost(p.id);
     if (selectedPost?.id === p.id) setSelectedPost(null);
@@ -992,9 +1189,38 @@ export default function MapScreen() {
     if (focusMap) focusPost(p);
   }
 
+  function openTrafficAlert(alert: LocalTrafficNotification) {
+    setNotificationCenterOpen(false);
+    setActiveTab("map");
+    mapRef.current?.flyTo({
+      center: [alert.lng, alert.lat],
+      zoom: Math.max(16, zoom),
+      duration: 700,
+    });
+
+    if (alert.relatedPostId) {
+      const post = posts.find((p) => p.id === alert.relatedPostId);
+      if (post) {
+        selectPost(post, false);
+        return;
+      }
+    }
+
+    let best: Post | null = null;
+    let bestD = Infinity;
+    for (const p of visibleMapPosts) {
+      const d = haversineMeters(alert.lat, alert.lng, p.lat, p.lng);
+      if (d < bestD && d <= 800) {
+        bestD = d;
+        best = p;
+      }
+    }
+    if (best) selectPost(best, false);
+  }
+
   function startRoadMode() {
     if (!user) {
-      setToast("Sign in on the Profile tab to add community roads.");
+      setToast(t("toast.signInForRoads"));
       setActiveTab("profile");
       return;
     }
@@ -1011,9 +1237,14 @@ export default function MapScreen() {
     setActiveTab("map");
   }
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (globalThis as Record<string, unknown>).__trafficJakartaStartRoadMode = startRoadMode;
+  });
+
   function finishRoadDrawing() {
     if (roadPoints.length < 2) {
-      setRoadError("Tap at least 2 points on the map to draw a road.");
+      setRoadError(t("errors.roadMinPoints"));
       return;
     }
     setRoadComposerOpen(true);
@@ -1024,7 +1255,7 @@ export default function MapScreen() {
     if (roadPoints.length < 2) return;
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      setRoadError("Sign in on the Profile tab to save community roads.");
+      setRoadError(t("errors.roadSignInSave"));
       return;
     }
     setRoadSubmitting(true);
@@ -1042,9 +1273,9 @@ export default function MapScreen() {
       setRoadMode(false);
       setRoadComposerOpen(false);
       setRoadPoints([]);
-      setToast("Community road saved");
+      setToast(t("toast.roadSaved"));
     } catch {
-      setRoadError("Could not save community road.");
+      setRoadError(t("errors.roadSaveFailed"));
     } finally {
       setRoadSubmitting(false);
     }
@@ -1067,6 +1298,7 @@ export default function MapScreen() {
 
   return (
     <div className="tj-app">
+      <div className="tj-map-shell" aria-hidden={false}>
       <Map
         ref={mapRef}
         mapLib={maplibregl as typeof maplibregl}
@@ -1132,6 +1364,46 @@ export default function MapScreen() {
           </Marker>
         )}
 
+        {smartTrafficEnabled &&
+          mapIntelligence?.clusters.map((cluster) => (
+            <Marker
+              key={cluster.id}
+              longitude={cluster.lng}
+              latitude={cluster.lat}
+              anchor="center"
+            >
+              <button
+                type="button"
+                className="tj-smart-cluster-marker"
+                title={`${cluster.reportCount} reports — confidence ${cluster.maxConfidence}`}
+                onClick={() => {
+                  mapRef.current?.flyTo({
+                    center: [cluster.lng, cluster.lat],
+                    zoom: Math.max(zoom, 15),
+                    duration: 700,
+                  });
+                  setTrafficDetailAlert({
+                    id: `cluster-marker-${cluster.id}`,
+                    kind: "cluster",
+                    dedupeKey: cluster.id,
+                    titleKey: "notifications.trafficAlert.clusterTitle",
+                    bodyKey: "notifications.trafficAlert.reportCount",
+                    bodyParams: { count: cluster.reportCount },
+                    lat: cluster.lat,
+                    lng: cluster.lng,
+                    clusterId: cluster.id,
+                    reportCount: cluster.reportCount,
+                    createdAt: Date.now(),
+                    readAt: null,
+                  });
+                  setTrafficDetailOpen(true);
+                }}
+              >
+                {cluster.reportCount}
+              </button>
+            </Marker>
+          ))}
+
         {visibleMapPosts.map((p) => (
           <PostMarker
             key={p.id}
@@ -1158,13 +1430,14 @@ export default function MapScreen() {
             </Marker>
           ))}
       </Map>
+      </div>
 
       <CurrentLocationMarker
         mapRef={mapRef}
         mapReady={mapReady}
         position={locationMarkerPosition}
         accuracy={nav.gpsFix?.accuracy ?? null}
-        heading={nav.displayPosition?.heading ?? null}
+        heading={locationHeading}
         navigating={isNavigating}
       />
 
@@ -1199,24 +1472,33 @@ export default function MapScreen() {
                 className="tj-select tj-select--compact"
                 value={filterMin}
                 onChange={(e) => setFilterMin(Number(e.target.value))}
-                aria-label="Show reports from"
+                aria-label={t("map.filterAria")}
               >
-                <option value={5}>5 min</option>
-                <option value={10}>10 min</option>
-                <option value={30}>30 min</option>
-                <option value={60}>1 hour</option>
-                <option value={1440}>1 day</option>
+                <option value={5}>{t("map.filter5m")}</option>
+                <option value={10}>{t("map.filter10m")}</option>
+                <option value={30}>{t("map.filter30m")}</option>
+                <option value={60}>{t("map.filter1h")}</option>
+                <option value={1440}>{t("map.filter1d")}</option>
               </select>
 
               <button type="button" className="tj-chip-btn" onClick={openNewComposer}>
-                ➕ Post
+                ➕ {t("map.postReport")}
               </button>
 
-              <button type="button" className="tj-chip-btn" onClick={startRoadMode}>
-                ➕ Add road
-              </button>
+              {user ? (
+                <>
+                  <MapMessagesButton
+                    unreadCount={messageInbox.unreadMessageCount}
+                    onClick={() => setMessagesOpen(true)}
+                  />
+                  <MapNotificationBell
+                    unreadCount={notificationUnreadCount}
+                    onClick={() => setNotificationCenterOpen(true)}
+                  />
+                </>
+              ) : null}
 
-              <div className="tj-counter">Reports: {posts.length}</div>
+              <div className="tj-counter">{t("map.reportsCount", { count: posts.length })}</div>
             </div>
 
             <div className="tj-search-wrap">
@@ -1227,8 +1509,8 @@ export default function MapScreen() {
                 onFocus={() => {
                   if (searchText.trim()) setShowSug(true);
                 }}
-                placeholder="Search places"
-                aria-label="Search places"
+                placeholder={t("map.searchPlaceholder")}
+                aria-label={t("map.searchPlaceholder")}
               />
               {searchError && (
                 <p className="tj-search-error">{searchError}</p>
@@ -1236,10 +1518,10 @@ export default function MapScreen() {
               {showSug && (
                 <div className="tj-suggestions">
                   {searchLoading ? (
-                    <div className="tj-suggestions__empty">Searching…</div>
+                    <div className="tj-suggestions__empty">{t("map.searchSearching")}</div>
                   ) : suggestions.length === 0 ? (
                     <div className="tj-suggestions__empty">
-                      {searchText.trim() ? "No places found" : "Type to search…"}
+                      {searchText.trim() ? t("map.searchNoResults") : t("map.searchTypeHint")}
                     </div>
                   ) : (
                     suggestions.map((s) => (
@@ -1272,7 +1554,7 @@ export default function MapScreen() {
                     setRouteError(null);
                   }}
                 >
-                  Tap map to set destination
+                  {t("map.tapMapDestination")}
                 </button>
                 {destination && (
                   <button
@@ -1280,12 +1562,12 @@ export default function MapScreen() {
                     className="tj-btn tj-btn--ghost tj-btn--compact"
                     onClick={() =>
                       selectDestination(
-                        { lat: center.lat, lng: center.lng, name: "Map center" },
+                        { lat: center.lat, lng: center.lng, name: t("map.mapCenter") },
                         false
                       )
                     }
                   >
-                    Destination = map center
+                    {t("map.destinationMapCenter")}
                   </button>
                 )}
               </div>
@@ -1298,7 +1580,7 @@ export default function MapScreen() {
               onChange={handleMapViewModeChange}
             />
             <button type="button" className="tj-locate-btn" onClick={goMyLocation}>
-              📍 Lokasi saat ini
+              📍 {t("map.currentLocation")}
             </button>
             {locErr && (
               <div className="tj-locate-err">
@@ -1306,15 +1588,16 @@ export default function MapScreen() {
                 <button
                   type="button"
                   className="tj-locate-retry"
-                  onClick={() =>
+                  onClick={() => {
+                    void requestCompassAccess();
                     requestLocation({
                       fly: true,
                       targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
                       focusLocation: true,
-                    })
-                  }
+                    });
+                  }}
                 >
-                  Retry
+                  {t("common.retry")}
                 </button>
               </div>
             )}
@@ -1322,23 +1605,23 @@ export default function MapScreen() {
 
           {destPickMode && (
             <div className="tj-road-banner">
-              <span>Tap the map to set your destination</span>
+              <span>{t("map.destPickBanner")}</span>
               <button
                 type="button"
                 className="tj-btn tj-btn--ghost"
                 onClick={() => setDestPickMode(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}
 
           {roadMode && (
             <div className="tj-road-banner">
-              <span>Tap map to add road points ({roadPoints.length})</span>
+              <span>{t("map.roadPickBanner", { count: roadPoints.length })}</span>
               <div className="tj-road-banner__actions">
                 <button type="button" className="tj-btn tj-btn--ghost" onClick={finishRoadDrawing}>
-                  Done drawing
+                  {t("map.doneDrawing")}
                 </button>
                 <button
                   type="button"
@@ -1349,7 +1632,7 @@ export default function MapScreen() {
                     setRoadComposerOpen(false);
                   }}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>
@@ -1382,6 +1665,7 @@ export default function MapScreen() {
           routePlan={routePlan}
           routing={routing}
           routeError={routeError}
+          routeIntelligenceWarnings={routeIntelligence?.warningItems}
           onSelectRoute={(index) =>
             setRoutePlan((prev) => (prev ? { ...prev, selectedIndex: index } : prev))
           }
@@ -1472,12 +1756,32 @@ export default function MapScreen() {
           posts={feedPosts}
           userLat={myPos?.lat ?? null}
           userLng={myPos?.lng ?? null}
+          viewerUid={user?.uid ?? null}
+          followingUids={followingUids}
           onSelect={(p) => selectPost(p)}
+          onOpenProfile={(uid) => setPublicProfileUid(uid)}
+          onOpenUserSearch={() => setUserSearchOpen(true)}
+          onOpenMessages={() => setMessagesOpen(true)}
+          messageUnreadCount={messageInbox.unreadMessageCount}
         />
       )}
 
       {activeTab === "profile" && (
-        <ProfilePanel posts={posts} onOpenPost={(p) => selectPost(p)} />
+        <ProfilePanel
+          posts={posts}
+          onOpenPost={(p) => selectPost(p)}
+          unifiedNotifications={unifiedNotifications}
+          notificationUnreadCount={notificationUnreadCount}
+          onMarkNotificationRead={(n) => void markNotificationReadUnified(n)}
+          onMarkAllNotificationsRead={() => void markAllNotificationsReadUnified()}
+          onOpenTrafficAlert={openTrafficAlert}
+          onViewTrafficDetails={(alert) => {
+            setTrafficDetailAlert(alert);
+            setTrafficDetailOpen(true);
+          }}
+          onOpenProfile={(uid) => setPublicProfileUid(uid)}
+          onOpenFavoritePlaces={() => setFavoritePlacesOpen(true)}
+        />
       )}
 
       {selectedPost && !openComposer && (
@@ -1502,12 +1806,34 @@ export default function MapScreen() {
             });
             void signIn();
           }}
+          onAskReporter={(post) => {
+            if (!user?.uid) {
+              void signIn();
+              return;
+            }
+            void startChatWithReportAuthor(user.uid, post)
+              .then((conversationId) => {
+                setChatReportContext(post);
+                setActiveChat({
+                  conversationId,
+                  peerUid: post.ownerUid!,
+                  status: "pending",
+                  pendingForUid: post.ownerUid!,
+                  lastMessageAt: Date.now(),
+                  lastPreview: "",
+                  lastSenderUid: user.uid,
+                  unreadCount: 0,
+                });
+                setSelectedPost(null);
+              })
+              .catch(() => {});
+          }}
         />
       )}
 
       {openComposer && !locationConfirmed && (
         <div className="tj-location-pick-banner" role="status">
-          Move the marker to the correct location
+          {t("composer.pickLocationBanner")}
         </div>
       )}
 
@@ -1536,8 +1862,135 @@ export default function MapScreen() {
           onFloodVehicleChange={setFloodVehicleAccess}
           onSubmit={onSubmit}
           onClose={closeComposer}
+          textAnalysisHint={composerTextAnalysisHint}
+          postAudience={postAudience}
+          postAnonymous={postAnonymous}
+          onPostAudienceChange={setPostAudience}
+          onPostAnonymousChange={setPostAnonymous}
         />
       )}
+
+      {notificationCenterOpen && user ? (
+        <NotificationCenterSheet
+          items={unifiedNotifications}
+          onClose={() => setNotificationCenterOpen(false)}
+          onMarkRead={(n) => void markNotificationReadUnified(n)}
+          onMarkAllRead={() => void markAllNotificationsReadUnified()}
+          onOpenPost={(postId) => {
+            setNotificationCenterOpen(false);
+            const post = posts.find((p) => p.id === postId);
+            if (post) selectPost(post, true);
+          }}
+          onOpenTraffic={openTrafficAlert}
+          onOpenProfile={(uid) => {
+            setNotificationCenterOpen(false);
+            setPublicProfileUid(uid);
+          }}
+          onViewTrafficDetails={(alert) => {
+            setTrafficDetailAlert(alert);
+            setTrafficDetailOpen(true);
+          }}
+        />
+      ) : null}
+
+      {messagesOpen && user ? (
+        <TrafficMessagesSheet
+          inbox={messageInbox.inbox}
+          requests={messageInbox.requests}
+          loadFailed={messageInbox.loadFailed}
+          lastError={messageInbox.lastError}
+          onClose={() => setMessagesOpen(false)}
+          onOpenChat={(thread) => {
+            setMessagesOpen(false);
+            setActiveChat(thread);
+            setChatReportContext(null);
+          }}
+        />
+      ) : null}
+
+      {activeChat && user ? (
+        <TrafficChatSheet
+          thread={activeChat}
+          initialReport={chatReportContext}
+          mapCenter={{ lat: center.lat, lng: center.lng }}
+          onClose={() => {
+            setActiveChat(null);
+            setChatReportContext(null);
+          }}
+          onOpenProfile={(uid) => {
+            setActiveChat(null);
+            setPublicProfileUid(uid);
+          }}
+        />
+      ) : null}
+
+      {publicProfileUid ? (
+        <PublicProfileSheet
+          uid={publicProfileUid}
+          posts={posts}
+          onClose={() => setPublicProfileUid(null)}
+          onOpenPost={(p) => {
+            setPublicProfileUid(null);
+            selectPost(p, true);
+          }}
+          onMessageUser={(peerUid) => {
+            if (!user?.uid) return;
+            void openTrafficChatWithUser(user.uid, peerUid).then(({ conversationId, status }) => {
+              setPublicProfileUid(null);
+              setActiveChat({
+                conversationId,
+                peerUid,
+                status,
+                pendingForUid: status === "pending" ? peerUid : null,
+                lastMessageAt: Date.now(),
+                lastPreview: "",
+                lastSenderUid: user.uid,
+                unreadCount: 0,
+              });
+            });
+          }}
+        />
+      ) : null}
+
+      {userSearchOpen ? (
+        <UserSearchSheet
+          onClose={() => setUserSearchOpen(false)}
+          onSelectProfile={(uid) => {
+            setUserSearchOpen(false);
+            setPublicProfileUid(uid);
+          }}
+        />
+      ) : null}
+
+      {favoritePlacesOpen && user ? (
+        <FavoritePlacesSheet
+          uid={user.uid}
+          pickMode={favoritePickMode}
+          pickedLat={favoritePickMode ? center.lat : null}
+          pickedLng={favoritePickMode ? center.lng : null}
+          onClose={() => {
+            setFavoritePlacesOpen(false);
+            setFavoritePickMode(false);
+          }}
+          onStartPick={() => {
+            setFavoritePickMode(true);
+            setActiveTab("map");
+          }}
+        />
+      ) : null}
+
+      {trafficDetailOpen ? (
+        <TrafficIntelligenceDetailSheet
+          open={trafficDetailOpen}
+          onClose={() => {
+            setTrafficDetailOpen(false);
+            setTrafficDetailAlert(null);
+          }}
+          intelligence={smartTrafficEnabled ? mapIntelligence : null}
+          loadingTomTom={intelligenceTomTomLoading}
+          alert={trafficDetailAlert}
+        />
+      ) : null}
 
       {editing && (
         <EditPostSheet
@@ -1574,11 +2027,11 @@ export default function MapScreen() {
 
       <BottomNav active={activeTab} onChange={setActiveTab} />
 
-      {firestoreError && (
+      {firestoreErrorKey ? (
         <p className="tj-firestore-err" role="alert">
-          Live reports unavailable: {firestoreError}
+          {t(firestoreErrorKey)}
         </p>
-      )}
+      ) : null}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>
@@ -1593,7 +2046,7 @@ function DraftRoadOverlay({
 }: {
   mapRef: React.RefObject<MapRef | null>;
   mapReady: boolean;
-  geojson: GeoJSON.Feature<GeoJSON.LineString>;
+  geojson: Feature<LineString>;
 }) {
   const srcId = "draft-road";
   const layerId = "draft-road-layer";

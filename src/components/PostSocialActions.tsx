@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { VoteType } from "../types";
+import { IconMessageCircle, IconShare, IconThumbsUp } from "./icons/AppIcons";
 
 type Props = {
   confirmCount: number;
@@ -22,6 +24,7 @@ export default function PostSocialActions({
   onCommentClick,
   onShare,
 }: Props) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -51,8 +54,8 @@ export default function PostSocialActions({
           onClick={onToggleConfirm}
           disabled={voting || !canInteract}
         >
-          <span aria-hidden>👍</span>
-          <span>Confirm</span>
+          <IconThumbsUp size={18} className="tj-social-action__icon" />
+          <span>{t("votes.confirm")}</span>
           {confirmCount > 0 && (
             <span className="tj-social-action__count">{confirmCount}</span>
           )}
@@ -62,18 +65,18 @@ export default function PostSocialActions({
           className="tj-social-action"
           onClick={onCommentClick}
         >
-          <span aria-hidden>💬</span>
-          <span>Comment</span>
+          <IconMessageCircle size={18} className="tj-social-action__icon" />
+          <span>{t("votes.comment")}</span>
         </button>
         <button type="button" className="tj-social-action" onClick={onShare}>
-          <span aria-hidden>↗</span>
-          <span>Share</span>
+          <IconShare size={18} className="tj-social-action__icon" />
+          <span>{t("postDetail.share")}</span>
         </button>
         <div className="tj-social-menu" ref={menuRef}>
           <button
             type="button"
             className={`tj-social-menu__trigger${userVote === "deny" ? " tj-social-action--active" : ""}`}
-            aria-label="More actions"
+            aria-label={t("votes.moreActions")}
             aria-expanded={menuOpen}
             disabled={!canInteract}
             onClick={() => setMenuOpen((open) => !open)}
@@ -92,14 +95,14 @@ export default function PostSocialActions({
                   onToggleDeny();
                 }}
               >
-                {userVote === "deny" ? "Remove not there" : "Not there"}
+                {userVote === "deny" ? t("votes.removeDeny") : t("votes.deny")}
               </button>
             </div>
           )}
         </div>
       </div>
       {userVote === "deny" && (
-        <p className="tj-social-personal-note">You marked this as not there.</p>
+        <p className="tj-social-personal-note">{t("votes.personalDenyNote")}</p>
       )}
     </div>
   );

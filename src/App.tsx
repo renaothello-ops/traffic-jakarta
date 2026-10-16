@@ -1,40 +1,74 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { withTranslation, type WithTranslation } from "react-i18next";
 import { AuthProvider } from "./contexts/AuthContext";
+import { UserProfileProvider } from "./contexts/UserProfileContext";
 import MapScreen from "./screens/MapScreen";
+import LanguageDocumentSync from "./components/LanguageDocumentSync";
+import "./i18n";
 
-type BoundaryState = { error: Error | null };
+type BoundaryState = { error: Error | null; resetKey: number };
 
-class AppErrorBoundary extends Component<{ children: ReactNode }, BoundaryState> {
-  state: BoundaryState = { error: null };
+class AppErrorBoundaryInner extends Component<
+  { children: ReactNode } & WithTranslation,
+  BoundaryState
+> {
+  state: BoundaryState = { error: null, resetKey: 0 };
 
-  static getDerivedStateFromError(error: Error): BoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<BoundaryState> {
     return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[app] render crash:", error.message, info.componentStack);
+    if (import.meta.env.DEV) {
+      console.error(error);
+    }
   }
+
+  private retry = () => {
+    this.setState({ error: null, resetKey: this.state.resetKey + 1 });
+  };
+
+  private backToMap = () => {
+    this.setState({ error: null, resetKey: this.state.resetKey + 1 });
+    window.location.hash = "";
+    window.history.replaceState({}, "", window.location.pathname);
+  };
 
   render() {
     if (this.state.error) {
+      const { t } = this.props;
       return (
-        <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
-          <h1>Something went wrong</h1>
-          <pre style={{ whiteSpace: "pre-wrap", color: "#b91c1c" }}>
-            {this.state.error.message}
-          </pre>
+        <div className="tj-crash-screen" role="alert">
+          <h1>{t("app.crashTitle")}</h1>
+          <p>{t("app.crashBody")}</p>
+          <div className="tj-action-row">
+            <button type="button" className="tj-btn tj-btn--primary" onClick={this.retry}>
+              {t("app.tryAgain")}
+            </button>
+            <button type="button" className="tj-btn tj-btn--ghost" onClick={this.backToMap}>
+              {t("app.backToMap")}
+            </button>
+          </div>
         </div>
       );
     }
-    return this.props.children;
+    return (
+      <div key={this.state.resetKey}>{this.props.children}</div>
+    );
   }
 }
+
+const AppErrorBoundary = withTranslation()(AppErrorBoundaryInner);
 
 export default function App() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
-        <MapScreen />
+        <UserProfileProvider>
+          <LanguageDocumentSync />
+          <MapScreen />
+        </UserProfileProvider>
       </AuthProvider>
     </AppErrorBoundary>
   );

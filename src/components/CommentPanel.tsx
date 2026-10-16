@@ -1,15 +1,28 @@
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { EnrichedPost } from "../assets/lib/trust";
-import { publicTrustLabel } from "../assets/lib/trust";
+import { publicTrustLabelI18n } from "../assets/lib/trustI18n";
 import { haversineMeters, formatDistance } from "../assets/lib/geo";
 import { getReportTypeMeta } from "../assets/lib/reportTypes";
+import { reportTypeLabel } from "../assets/lib/reportTypeI18n";
 import { timeAgo } from "../assets/lib/timeAgo";
+import { isPublicTrafficPost, sanitizePostForViewer } from "../assets/lib/postAccess";
+import MapMessagesButton from "./MapMessagesButton";
 
 type Props = {
   posts: EnrichedPost[];
   userLat: number | null;
   userLng: number | null;
+  viewerUid: string | null;
+  followingUids: string[];
   onSelect: (post: EnrichedPost) => void;
+  onOpenProfile?: (uid: string) => void;
+  onOpenUserSearch?: () => void;
+  onOpenMessages?: () => void;
+  messageUnreadCount?: number;
 };
+
+type CommunityTab = "all" | "following";
 
 type RankedPost = EnrichedPost & { distanceM: number | null };
 
@@ -62,22 +75,35 @@ function rankNearby(
 function ReportCard({
   post,
   distanceM,
+  viewerUid,
   onSelect,
+  onOpenProfile,
 }: {
   post: EnrichedPost;
   distanceM?: number | null;
+  viewerUid: string | null;
   onSelect: (post: EnrichedPost) => void;
+  onOpenProfile?: (uid: string) => void;
 }) {
+  const { t } = useTranslation();
   const meta = getReportTypeMeta(post.type);
+  const typeLabel = reportTypeLabel(t, post.type);
   const confirmCount = post.confirmCount;
-  const status = publicTrustLabel(
+  const status = publicTrustLabelI18n(
+    t,
     confirmCount,
     post.trustLevel,
     post.isCommunityVerified
   );
+  const showAuthor =
+    post.ownerUid && !post.anonymous && post.username && post.username !== "Anonymous";
 
   return (
-    <button type="button" className="tj-comment-card" onClick={() => onSelect(post)}>
+    <button
+      type="button"
+      className="tj-comment-card"
+      onClick={() => onSelect(sanitizePostForViewer(post, viewerUid) as EnrichedPost)}
+    >
       {post.imageURL ? (
         <img src={post.imageURL} alt="" className="tj-comment-card__photo" />
       ) : (
@@ -87,17 +113,31 @@ function ReportCard({
       )}
       <span className="tj-comment-card__body">
         <span className="tj-comment-card__row">
-          <strong>{meta.label}</strong>
+          <strong>{typeLabel}</strong>
           <span className="tj-comment-card__time">{timeAgo(post.createdAt)}</span>
         </span>
         <span className="tj-comment-card__sub">
-          {distanceM != null ? formatDistance(distanceM) : "Recent report"}
+          {distanceM != null ? formatDistance(distanceM) : t("community.recentReport")}
           {" · "}
           {status}
         </span>
+        {showAuthor ? (
+          <button
+            type="button"
+            className="tj-comment-card__author"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenProfile?.(post.ownerUid!);
+            }}
+          >
+            {post.username}
+          </button>
+        ) : null}
         {post.text && <span className="tj-comment-card__text">{post.text}</span>}
         {confirmCount > 0 && (
-          <span className="tj-comment-card__votes">👍 {confirmCount} confirm</span>
+          <span className="tj-comment-card__votes">
+            {t("postDetail.confirmCount", { count: confirmCount })}
+          </span>
         )}
       </span>
     </button>
@@ -108,30 +148,89 @@ export default function CommentPanel({
   posts,
   userLat,
   userLng,
+  viewerUid,
+  followingUids,
   onSelect,
+  onOpenProfile,
+  onOpenUserSearch,
+  onOpenMessages,
+  messageUnreadCount = 0,
 }: Props) {
-  const nearby = rankNearby(posts, userLat, userLng).slice(0, 20);
-  const recent = [...posts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 30);
+  const { t } = useTranslation();
+  const [tab, setTab] = useState<CommunityTab>("all");
+
+  const publicPosts = useMemo(
+    () => posts.filter((p) => isPublicTrafficPost(p)),
+    [posts]
+  );
+
+  const followingSet = useMemo(() => new Set(followingUids), [followingUids]);
+
+  const followingPosts = useMemo(
+    () =>
+      publicPosts.filter(
+        (p) => p.ownerUid && followingSet.has(p.ownerUid)
+      ),
+    [publicPosts, followingSet]
+  );
+
+  const feedPosts = tab === "following" ? followingPosts : publicPosts;
+  const nearby = rankNearby(feedPosts, userLat, userLng).slice(0, 20);
+  const recent = [...feedPosts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 40);
 
   return (
     <div className="tj-tab-panel">
-      <header className="tj-tab-panel__header">
-        <h1 className="tj-tab-panel__title">💬 Comment</h1>
-        <p className="tj-tab-panel__subtitle">
-          Traffic reports, comments, and community verification
-        </p>
+      <header className="tj-tab-panel__header tj-community-header">
+        <div>
+          <h1 className="tj-tab-panel__title">{t("nav.community")}</h1>
+          <p className="tj-tab-panel__subtitle">{t("comments.communitySubtitle")}</p>
+        </div>
+        <div className="tj-community-header__actions">
+          {viewerUid && onOpenMessages ? (
+            <MapMessagesButton
+              unreadCount={messageUnreadCount}
+              onClick={onOpenMessages}
+            />
+          ) : null}
+          {onOpenUserSearch ? (
+            <button
+              type="button"
+              className="tj-btn tj-btn--ghost tj-btn--compact"
+              onClick={onOpenUserSearch}
+            >
+              {t("social.userSearch")}
+            </button>
+          ) : null}
+        </div>
       </header>
 
+      <div className="tj-community-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          className={`tj-community-tab${tab === "all" ? " tj-community-tab--active" : ""}`}
+          onClick={() => setTab("all")}
+        >
+          {t("community.tabAllPublic")}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={`tj-community-tab${tab === "following" ? " tj-community-tab--active" : ""}`}
+          onClick={() => setTab("following")}
+        >
+          {t("community.tabFollowing")}
+        </button>
+      </div>
+
       {userLat == null && (
-        <p className="tj-hint">
-          Enable location on the Map tab to sort nearby reports by distance.
-        </p>
+        <p className="tj-hint">{t("comments.enableLocationHint")}</p>
       )}
 
       <section className="tj-comment-section">
-        <h2 className="tj-comment-section__title">Nearby reports</h2>
+        <h2 className="tj-comment-section__title">{t("comments.nearbyTitle")}</h2>
         {nearby.length === 0 ? (
-          <p className="tj-tab-panel__empty">No nearby reports in this time window.</p>
+          <p className="tj-tab-panel__empty">{t("comments.nearbyEmpty")}</p>
         ) : (
           <div className="tj-comment-list">
             {nearby.map((p) => (
@@ -139,7 +238,9 @@ export default function CommentPanel({
                 key={`nearby-${p.id}`}
                 post={p}
                 distanceM={p.distanceM}
+                viewerUid={viewerUid}
                 onSelect={onSelect}
+                onOpenProfile={onOpenProfile}
               />
             ))}
           </div>
@@ -147,13 +248,19 @@ export default function CommentPanel({
       </section>
 
       <section className="tj-comment-section">
-        <h2 className="tj-comment-section__title">Recent reports</h2>
+        <h2 className="tj-comment-section__title">{t("comments.recentTitle")}</h2>
         {recent.length === 0 ? (
-          <p className="tj-tab-panel__empty">No recent reports yet.</p>
+          <p className="tj-tab-panel__empty">{t("comments.recentEmpty")}</p>
         ) : (
           <div className="tj-comment-list">
             {recent.map((p) => (
-              <ReportCard key={`recent-${p.id}`} post={p} onSelect={onSelect} />
+              <ReportCard
+                key={`recent-${p.id}`}
+                post={p}
+                viewerUid={viewerUid}
+                onSelect={onSelect}
+                onOpenProfile={onOpenProfile}
+              />
             ))}
           </div>
         )}

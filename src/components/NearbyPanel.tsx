@@ -1,11 +1,10 @@
+import { useTranslation } from "react-i18next";
 import type { Post } from "../types";
 import { haversineMeters, formatDistance } from "../assets/lib/geo";
-import {
-  getConfidenceStatus,
-  confidenceLabel,
-  REPORT_TYPE_META,
-} from "../assets/lib/reportTypes";
-import { timeAgo } from "../assets/lib/timeAgo";
+import { getConfidenceStatus, REPORT_TYPE_META } from "../assets/lib/reportTypes";
+import { reportTypeLabel } from "../assets/lib/reportTypeI18n";
+import { confidenceLabelI18n } from "../assets/lib/confidenceI18n";
+import RelativeTime from "./RelativeTime";
 
 type Props = {
   posts: Post[];
@@ -64,23 +63,23 @@ export default function NearbyPanel({
   userLng,
   onSelect,
 }: Props) {
+  const { t } = useTranslation();
   const ranked = rankPosts(posts, userLat, userLng);
 
   return (
     <div className="tj-nearby-panel">
-      <h2 className="tj-nearby-panel__title">Nearby reports</h2>
-      {userLat == null && (
-        <p className="tj-hint">
-          Enable location to sort by distance. Showing recent reports.
-        </p>
-      )}
+      <h2 className="tj-nearby-panel__title">{t("comments.nearbyTitle")}</h2>
+      {userLat == null ? (
+        <p className="tj-hint">{t("comments.enableLocationHint")}</p>
+      ) : null}
       {ranked.length === 0 ? (
-        <p className="tj-nearby-panel__empty">No reports in the current time window.</p>
+        <p className="tj-nearby-panel__empty">{t("comments.nearbyEmpty")}</p>
       ) : (
         <ul className="tj-nearby-list">
           {ranked.map((p) => {
             const meta = REPORT_TYPE_META[p.type];
-            const status = confidenceLabel(
+            const status = confidenceLabelI18n(
+              t,
               getConfidenceStatus(p.confirmCount ?? 0, p.denyCount ?? 0)
             );
             return (
@@ -94,19 +93,21 @@ export default function NearbyPanel({
                     {meta.emoji}
                   </span>
                   <span className="tj-nearby-item__body">
-                    <span className="tj-nearby-item__title">{meta.label}</span>
+                    <span className="tj-nearby-item__title">
+                      {reportTypeLabel(t, p.type)}
+                    </span>
                     <span className="tj-nearby-item__sub">
                       {p.distanceM != null
                         ? formatDistance(p.distanceM)
-                        : "Distance unknown"}
+                        : t("community.distanceUnknown")}
                       {" · "}
-                      {timeAgo(p.createdAt)}
+                      <RelativeTime ts={p.createdAt} />
                       {" · "}
                       {status}
                     </span>
-                    {p.text && (
+                    {p.text ? (
                       <span className="tj-nearby-item__text">{p.text}</span>
-                    )}
+                    ) : null}
                   </span>
                 </button>
               </li>

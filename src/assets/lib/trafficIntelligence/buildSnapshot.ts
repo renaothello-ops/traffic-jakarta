@@ -128,7 +128,7 @@ export function buildTrafficIntelligenceSnapshot(
     freshestReportAgeSeconds,
     routeAffected,
     distanceAheadMeters: nearestWarningDistanceMeters,
-    tomTomTrafficTimestamp: null,
+    tomTomTrafficTimestamp: tomtom?.observedAt ?? null,
     communitySignalTimestamp:
       aheadReports.length > 0 ? timestamp : null,
     communitySignalAgeSeconds: freshestReportAgeSeconds,

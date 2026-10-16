@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EnrichedPost } from "../assets/lib/trust";
 import {
   projectRouteReports,
@@ -15,7 +15,11 @@ import {
   buildAiTrafficContext,
   buildTrafficIntelligenceSnapshot,
 } from "../assets/lib/trafficIntelligence/buildSnapshot";
-import { fetchTomTomNumericTraffic } from "../assets/lib/trafficIntelligence/tomtomAdapter";
+import {
+  fetchTomTomNumericTrafficAsync,
+} from "../assets/lib/trafficIntelligence/tomtomAdapter";
+import { detectTrafficTrend } from "../intelligence/trend/detectTrend";
+import { enrichedPostToSignal } from "../intelligence/trafficFusion/fuseTrafficIntelligence";
 import type {
   AiTrafficContext,
   TrafficIntelligenceSnapshot,
@@ -137,22 +141,66 @@ export function useNavigationRouteWarnings({
     return map;
   }, [posts]);
 
+  const [navTomTom, setNavTomTom] = useState<Awaited<
+    ReturnType<typeof fetchTomTomNumericTrafficAsync>
+  > | null>(null);
+
+  useEffect(() => {
+    if (!isNavigating || userLat == null || userLng == null) {
+      setNavTomTom(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchTomTomNumericTrafficAsync(userLat, userLng).then((data) => {
+      if (!cancelled) setNavTomTom(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isNavigating, userLat, userLng, now]);
+
   const intelligenceSnapshot = useMemo(() => {
     if (!isNavigating || projections.length === 0) return null;
 
-    const tomtom =
-      userLat != null && userLng != null
-        ? fetchTomTomNumericTraffic(userLat, userLng)
-        : null;
+    const routeSignals = projections
+      .map((p) => posts.find((x) => x.id === p.postId))
+      .filter((p): p is EnrichedPost => p != null)
+      .map((p) => enrichedPostToSignal(p, 0));
+
+    const trendResult = detectTrafficTrend({
+      reports: routeSignals,
+      tomtom: navTomTom
+        ? {
+            currentSpeedKph: navTomTom.currentSpeedKph,
+            freeFlowSpeedKph: navTomTom.freeFlowSpeedKph,
+            confidence: navTomTom.confidence,
+            roadClosure: navTomTom.roadClosure,
+            observedAt: navTomTom.observedAt ?? null,
+          }
+        : null,
+      now,
+    });
+
+    const trend5m =
+      trendResult.trend === "worsening" ||
+      trendResult.trend === "major_incident_detected"
+        ? "worsening"
+        : trendResult.trend === "improving"
+          ? "improving"
+          : trendResult.trend === "stable"
+            ? "stable"
+            : null;
 
     return buildTrafficIntelligenceSnapshot({
       segmentId: navigationSessionKey || "nav-active",
       timestamp: now,
       aheadReports: projections,
       createdAtById,
-      tomtom,
+      tomtom: navTomTom,
       routeAffected: projections.length > 0,
       nearestWarningDistanceMeters: warning?.distanceAheadMeters ?? null,
+      trafficTrend5m: trend5m,
+      trafficTrend10m: null,
     });
   }, [
     isNavigating,
@@ -163,6 +211,8 @@ export function useNavigationRouteWarnings({
     now,
     createdAtById,
     warning?.distanceAheadMeters,
+    navTomTom,
+    posts,
   ]);
 
   const aiContext = useMemo(

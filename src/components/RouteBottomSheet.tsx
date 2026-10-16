@@ -1,4 +1,8 @@
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { RoutePlan } from "../types";
+import type { RouteWarningItem } from "../intelligence/types";
+import { formatRouteWarningItem } from "../assets/lib/reportTypeI18n";
 import {
   formatArrivalTime,
   formatDistanceKm,
@@ -13,6 +17,7 @@ type Props = {
   routePlan: RoutePlan;
   routing: boolean;
   routeError: string | null;
+  routeIntelligenceWarnings?: RouteWarningItem[];
   onSelectRoute: (index: number) => void;
   onStartNavigation: () => void;
   onClearRoute: () => void;
@@ -23,20 +28,30 @@ export default function RouteBottomSheet({
   routePlan,
   routing,
   routeError,
+  routeIntelligenceWarnings,
   onSelectRoute,
   onStartNavigation,
   onClearRoute,
   onChangeDestination,
 }: Props) {
+  const { t } = useTranslation();
   const selected = routePlan.routes[routePlan.selectedIndex];
   const dest = routePlan.destination;
+
+  const warningLines = useMemo(
+    () =>
+      (routeIntelligenceWarnings ?? []).map((item) =>
+        formatRouteWarningItem(t, item)
+      ),
+    [routeIntelligenceWarnings, t]
+  );
 
   return (
     <div className="tj-route-sheet">
       <div className="tj-sheet__handle" />
       <div className="tj-route-sheet__head">
         <div>
-          <div className="tj-route-sheet__label">Route preview</div>
+          <div className="tj-route-sheet__label">{t("route.preview")}</div>
           <div className="tj-route-sheet__dest">{dest.name}</div>
           {dest.address && (
             <div className="tj-route-sheet__address">{dest.address}</div>
@@ -47,19 +62,34 @@ export default function RouteBottomSheet({
             <strong>{formatDuration(selected.durationSeconds)}</strong>
             <span>{formatDistanceKm(selected.distanceMeters)}</span>
             <span className="tj-route-sheet__arrive">
-              Arrive {formatArrivalTime(selected.durationSeconds)}
+              {t("route.arriveAt", {
+                time: formatArrivalTime(selected.durationSeconds),
+              })}
             </span>
           </div>
         )}
       </div>
 
-      {routing && <p className="tj-hint">Calculating fastest route…</p>}
+      {routing && <p className="tj-hint">{t("route.calculating")}</p>}
       {routeError && <p className="tj-error">{routeError}</p>}
 
       {selected && selected.trafficDelaySeconds > 0 && (
         <p className="tj-hint">
-          Traffic delay about +{Math.round(selected.trafficDelaySeconds / 60)} min
+          {t("route.trafficDelay", {
+            minutes: Math.round(selected.trafficDelaySeconds / 60),
+          })}
         </p>
+      )}
+
+      {warningLines.length > 0 && (
+        <div className="tj-route-intel-warnings" role="note">
+          <div className="tj-route-intel-warnings__title">{t("route.alertsTitle")}</div>
+          <ul>
+            {warningLines.slice(0, 4).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {routePlan.routes.length > 1 && (
@@ -75,7 +105,9 @@ export default function RouteBottomSheet({
               <span className="tj-route-option__meta">
                 {formatDuration(r.durationSeconds)} · {formatDistanceKm(r.distanceMeters)}
                 {r.trafficDelaySeconds > 0
-                  ? ` · +${Math.round(r.trafficDelaySeconds / 60)} min traffic`
+                  ? t("route.optionTraffic", {
+                      minutes: Math.round(r.trafficDelaySeconds / 60),
+                    })
                   : ""}
               </span>
             </button>
@@ -90,27 +122,27 @@ export default function RouteBottomSheet({
           onClick={onStartNavigation}
           disabled={!selected || routing}
         >
-          Start Navigation
+          {t("route.startNavigation")}
         </button>
         <button
           type="button"
           className="tj-btn tj-btn--ghost tj-btn--compact"
           onClick={() => openGoogleMapsNavigation(dest.lat, dest.lng)}
         >
-          Open in Google Maps
+          {t("route.openGoogleMaps")}
         </button>
         <button
           type="button"
           className="tj-btn tj-btn--ghost tj-btn--compact"
           onClick={() => openWazeNavigation(dest.lat, dest.lng)}
         >
-          Open in Waze
+          {t("route.openWaze")}
         </button>
         <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onChangeDestination}>
-          Change destination
+          {t("route.changeDestination")}
         </button>
         <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onClearRoute}>
-          Clear route
+          {t("route.clearRoute")}
         </button>
       </div>
     </div>

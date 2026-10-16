@@ -1,9 +1,11 @@
+import { useTranslation } from "react-i18next";
 import type { RouteReportWarning } from "../assets/lib/navigation/routeReports";
 import {
-  formatRecentConfirmLine,
-  formatReportAhead,
-} from "../assets/lib/navigation/routeReports";
+  formatReportAheadI18n,
+  formatRecentConfirmLineI18n,
+} from "../assets/lib/navigation/routeReportI18n";
 import { REPORT_TYPE_META } from "../assets/lib/reportTypes";
+import { reportTypeShortLabel } from "../assets/lib/reportTypeI18n";
 
 type Props = {
   warning: RouteReportWarning | null;
@@ -11,10 +13,16 @@ type Props = {
 };
 
 export default function NavRouteReportBanner({ warning, onSelect }: Props) {
+  const { t } = useTranslation();
   if (!warning) return null;
 
   const meta = REPORT_TYPE_META[warning.type];
-  const confirmLine = formatRecentConfirmLine(warning.recentConfirmCount5m);
+  const label = reportTypeShortLabel(t, warning.type);
+  const ahead = formatReportAheadI18n(t, warning.distanceAheadMeters);
+  const confirmLine = formatRecentConfirmLineI18n(t, warning.recentConfirmCount5m);
+  const verifiedLabel = warning.isCommunityVerified
+    ? t("community.verified")
+    : "";
 
   return (
     <div className="tj-nav-route-alerts" aria-live="polite">
@@ -22,7 +30,7 @@ export default function NavRouteReportBanner({ warning, onSelect }: Props) {
         type="button"
         className="tj-nav-route-alert"
         onClick={() => onSelect?.(warning.postId)}
-        aria-label={`${warning.label}, ${formatReportAhead(warning.distanceAheadMeters)}, ${confirmLine}${warning.isCommunityVerified ? ", community verified" : ""}`}
+        aria-label={`${label}, ${ahead}, ${confirmLine}${verifiedLabel ? `, ${verifiedLabel}` : ""}`}
       >
         <span className="tj-nav-route-alert__emoji" aria-hidden>
           {meta?.emoji ?? "⚠️"}
@@ -30,15 +38,13 @@ export default function NavRouteReportBanner({ warning, onSelect }: Props) {
         <span className="tj-nav-route-alert__body">
           <span className="tj-nav-route-alert__title">
             {warning.isCommunityVerified ? "✓ " : ""}
-            {warning.label}
+            {label}
           </span>
           <span className="tj-nav-route-alert__meta">
-            {formatReportAhead(warning.distanceAheadMeters)} · {confirmLine}
+            {ahead} · {confirmLine}
           </span>
           {warning.isCommunityVerified ? (
-            <span className="tj-nav-route-alert__verified">
-              Community verified
-            </span>
+            <span className="tj-nav-route-alert__verified">{verifiedLabel}</span>
           ) : null}
         </span>
       </button>

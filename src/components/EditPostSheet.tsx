@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type {
   FloodDepth,
   FloodVehicleAccess,
@@ -34,13 +35,15 @@ export default function EditPostSheet({
   onSave,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="tj-sheet-backdrop">
       <div className="tj-sheet tj-sheet--composer">
         <div className="tj-sheet__handle" />
         <div className="tj-sheet__header">
-          <h2 className="tj-sheet__title">Edit report</h2>
-          <button type="button" className="tj-icon-btn" onClick={onClose} aria-label="Close">
+          <h2 className="tj-sheet__title">{t("composer.titleEdit")}</h2>
+          <button type="button" className="tj-icon-btn" onClick={onClose} aria-label={t("common.close")}>
             ✕
           </button>
         </div>
@@ -50,7 +53,7 @@ export default function EditPostSheet({
         {type === "flooded" && (
           <div className="tj-flood-fields">
             <label className="tj-label">
-              Flood depth
+              {t("composer.floodDepth")}
               <select
                 className="tj-select"
                 value={floodDepth ?? "unknown"}
@@ -60,13 +63,13 @@ export default function EditPostSheet({
               >
                 {FLOOD_DEPTH_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {t(`flood.depthOptions.${o.value}`)}
                   </option>
                 ))}
               </select>
             </label>
             <label className="tj-label">
-              Vehicle accessibility
+              {t("composer.vehicleAccess")}
               <select
                 className="tj-select"
                 value={floodVehicleAccess ?? "not_passable"}
@@ -76,7 +79,7 @@ export default function EditPostSheet({
               >
                 {FLOOD_VEHICLE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {t(`flood.vehicleOptions.${o.value}`)}
                   </option>
                 ))}
               </select>
@@ -88,16 +91,12 @@ export default function EditPostSheet({
           className="tj-textarea"
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
-          placeholder="Description"
+          placeholder={t("composer.describeOptional")}
           rows={4}
         />
 
-        <p className="tj-hint">
-          Use &quot;Move marker&quot; in the report card to reposition, then &quot;Fix marker&quot; and Save.
-        </p>
-
         <button type="button" className="tj-btn tj-btn--primary" onClick={onSave}>
-          Save
+          {t("common.save")}
         </button>
       </div>
     </div>

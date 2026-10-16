@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PostType } from "../types";
 import { REPORT_TYPE_META } from "../assets/lib/reportTypes";
+import { reportTypeShortLabel } from "../assets/lib/reportTypeI18n";
 import type { QuickReportLocation } from "../assets/lib/quickReportLocation";
+import {
+  getCurrentAppLanguage,
+  localeTagForLanguage,
+} from "../i18n/languagePreference";
 
 export const QUICK_REPORT_TYPES: PostType[] = [
   "accident",
@@ -38,6 +44,7 @@ export default function QuickReportSheet({
   onClose,
   onPost,
 }: Props) {
+  const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState<PostType | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [text, setText] = useState("");
@@ -71,25 +78,25 @@ export default function QuickReportSheet({
         className="tj-quick-report-sheet"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Quick report"
+        aria-label={t("quickReport.title")}
       >
         <div className="tj-sheet__handle" />
         <div className="tj-quick-report-sheet__head">
-          <h2 className="tj-quick-report-sheet__title">Quick report</h2>
-          <button type="button" className="tj-icon-btn" onClick={onClose} aria-label="Cancel">
+          <h2 className="tj-quick-report-sheet__title">{t("quickReport.title")}</h2>
+          <button type="button" className="tj-icon-btn" onClick={onClose} aria-label={t("common.cancel")}>
             ✕
           </button>
         </div>
 
         <p className="tj-quick-report-sheet__location">
-          {location ? "📍 Current location" : "Waiting for current location…"}
+          {location ? `📍 ${t("map.currentLocation")}` : t("quickReport.waitingLocation")}
         </p>
 
         {!isSignedIn ? (
           <div className="tj-quick-report-sheet__auth">
-            <p className="tj-hint">Sign in to post a report while navigating.</p>
+            <p className="tj-hint">{t("quickReport.signInHint")}</p>
             <button type="button" className="tj-btn tj-btn--primary tj-btn--compact" onClick={onSignIn}>
-              Sign in
+              {t("auth.signInTitle")}
             </button>
           </div>
         ) : (
@@ -109,7 +116,7 @@ export default function QuickReportSheet({
                     <span className="tj-quick-report-type__emoji" aria-hidden>
                       {meta.emoji}
                     </span>
-                    <span className="tj-quick-report-type__label">{meta.label}</span>
+                    <span className="tj-quick-report-type__label">{reportTypeShortLabel(t, type)}</span>
                   </button>
                 );
               })}
@@ -121,7 +128,7 @@ export default function QuickReportSheet({
                   className="tj-textarea tj-textarea--compact"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Short note (optional)"
+                  placeholder={t("quickReport.shortNote")}
                   rows={2}
                 />
                 <div className="tj-quick-report-details__actions">
@@ -130,7 +137,7 @@ export default function QuickReportSheet({
                     className="tj-btn tj-btn--ghost tj-btn--compact"
                     onClick={() => fileRef.current?.click()}
                   >
-                    📷 Photo
+                    📷 {t("quickReport.photo")}
                   </button>
                   {"webkitSpeechRecognition" in window || "SpeechRecognition" in window ? (
                     <button
@@ -151,7 +158,7 @@ export default function QuickReportSheet({
                         const SR = W.SpeechRecognition ?? W.webkitSpeechRecognition;
                         if (!SR) return;
                         const rec = new SR();
-                        rec.lang = "en-US";
+                        rec.lang = localeTagForLanguage(getCurrentAppLanguage());
                         rec.interimResults = false;
                         rec.maxAlternatives = 1;
                         rec.onresult = (ev) => {
@@ -163,7 +170,7 @@ export default function QuickReportSheet({
                         rec.start();
                       }}
                     >
-                      🎤 Note
+                      🎤 {t("quickReport.voiceNote")}
                     </button>
                   ) : null}
                 </div>
@@ -182,7 +189,11 @@ export default function QuickReportSheet({
                   }}
                 />
                 {image ? (
-                  <img src={image} alt="Report preview" className="tj-preview-img tj-preview-img--compact" />
+                  <img
+                    src={image}
+                    alt={t("quickReport.reportPreviewAlt")}
+                    className="tj-preview-img tj-preview-img--compact"
+                  />
                 ) : null}
               </div>
             )}
@@ -196,7 +207,7 @@ export default function QuickReportSheet({
                 disabled={!canPost}
                 onClick={() => selectedType && void handlePost(selectedType)}
               >
-                {submitting ? "Posting…" : "Post"}
+                {submitting ? t("common.posting") : t("common.post")}
               </button>
               {!showDetails ? (
                 <button
@@ -205,11 +216,11 @@ export default function QuickReportSheet({
                   onClick={() => setShowDetails(true)}
                   disabled={!selectedType}
                 >
-                  Add details
+                  {t("quickReport.addDetails")}
                 </button>
               ) : null}
               <button type="button" className="tj-btn tj-btn--ghost" onClick={onClose} disabled={submitting}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </>

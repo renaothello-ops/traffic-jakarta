@@ -14,6 +14,7 @@ import { isValidImageDataUrl } from "./validation";
 import type { CommunityRoad, RoadAccess, RoadVoteType, Vote } from "../../types";
 import { displayNameOrFallback } from "./identity";
 import { countVotes, getUserVote } from "./votes";
+import { handleFirestoreListenError } from "./firestoreListenErrors";
 
 const col = collection(db, "communityRoads");
 
@@ -87,14 +88,9 @@ export async function createCommunityRoad(input: {
   return ref.id;
 }
 
-function firestoreErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
-}
-
 export function listenCommunityRoads(
   callback: (roads: CommunityRoad[]) => void,
-  onError?: (message: string) => void
+  onError?: (i18nKey: string) => void
 ): () => void {
   const q = query(col, orderBy("createdAt", "desc"));
 
@@ -121,8 +117,7 @@ export function listenCommunityRoads(
       callback(roads);
     },
     (error) => {
-      console.error("[listenCommunityRoads] onSnapshot error:", error);
-      onError?.(firestoreErrorMessage(error));
+      handleFirestoreListenError("communityRoads", error, onError);
     }
   );
 }
@@ -190,11 +185,14 @@ export async function deleteCommunityRoad(id: string): Promise<void> {
   await deleteDoc(roadDoc(id));
 }
 
+export const ROAD_ACCESS_VALUES: RoadAccess[] = [
+  "cars",
+  "motorcycles",
+  "motorcycle_only",
+  "restricted",
+  "private",
+];
+
+/** @deprecated Use ROAD_ACCESS_VALUES + i18n community.roadAccess.* */
 export const ROAD_ACCESS_OPTIONS: Array<{ value: RoadAccess; label: string }> =
-  [
-    { value: "cars", label: "Cars allowed" },
-    { value: "motorcycles", label: "Motorcycles allowed" },
-    { value: "motorcycle_only", label: "Motorcycle only" },
-    { value: "restricted", label: "Restricted" },
-    { value: "private", label: "Private / uncertain" },
-  ];
+  ROAD_ACCESS_VALUES.map((value) => ({ value, label: value }));

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Comment } from "../types";
 import { timeAgo } from "../assets/lib/timeAgo";
 import { updateComment, deleteComment } from "../assets/lib/comments";
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export default function CommentRow({ comment, currentUserId, onError }: Props) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(comment.text);
   const [saving, setSaving] = useState(false);
@@ -26,11 +28,11 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
     if (!comment.authorUid || saving) return;
     const trimmed = editText.trim();
     if (!trimmed) {
-      onError?.("Comment cannot be empty.");
+      onError?.(t("errors.commentEmpty"));
       return;
     }
     if (trimmed.length > MAX_COMMENT_LENGTH) {
-      onError?.(`Comments must be ${MAX_COMMENT_LENGTH} characters or less.`);
+      onError?.(t("errors.commentMaxLength", { max: MAX_COMMENT_LENGTH }));
       return;
     }
 
@@ -40,7 +42,7 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
       setEditing(false);
     } catch (error) {
       console.error("[comment] edit failed:", error);
-      onError?.("Could not update comment.");
+      onError?.(t("errors.commentUpdateFailed"));
     } finally {
       setSaving(false);
     }
@@ -48,7 +50,7 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
 
   async function handleDelete() {
     if (!comment.authorUid || deleting) return;
-    const ok = confirm("Delete this comment?");
+    const ok = confirm(t("confirm.deleteComment"));
     if (!ok) return;
 
     setDeleting(true);
@@ -56,7 +58,7 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
       await deleteComment(comment.postId, comment.id, comment.authorUid);
     } catch (error) {
       console.error("[comment] delete failed:", error);
-      onError?.("Could not delete comment.");
+      onError?.(t("errors.commentDeleteFailed"));
     } finally {
       setDeleting(false);
     }
@@ -98,7 +100,7 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
               }}
               disabled={saving}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -106,7 +108,7 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
               onClick={handleSave}
               disabled={saving || !editText.trim()}
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </div>

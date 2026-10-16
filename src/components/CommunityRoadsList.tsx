@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { CommunityRoad, Vote, VoteType } from "../types";
 import {
   castRoadVote,
@@ -6,7 +7,6 @@ import {
   getUserVote,
   isRoadVerified,
   listenRoadVotes,
-  ROAD_ACCESS_OPTIONS,
 } from "../assets/lib/communityRoads";
 import { countVotes } from "../assets/lib/votes";
 import { isMinePost } from "../assets/lib/identity";
@@ -24,6 +24,7 @@ function RoadListItem({
   road: CommunityRoad;
   voterId: string | null;
 }) {
+  const { t } = useTranslation();
   const [votes, setVotes] = useState<Vote[]>([]);
   const [voting, setVoting] = useState(false);
 
@@ -41,8 +42,9 @@ function RoadListItem({
   const { confirmCount, denyCount } = countVotes(votes);
   const verified = isRoadVerified(confirmCount, denyCount);
   const userVote = voterId ? getUserVote(votes, voterId) : null;
-  const accessLabel =
-    ROAD_ACCESS_OPTIONS.find((o) => o.value === road.access)?.label ?? road.access;
+  const accessLabel = t(`community.roadAccess.${road.access}`, {
+    defaultValue: road.access,
+  });
 
   async function handleVote(voteType: VoteType) {
     if (!voterId || voting) return;
@@ -80,7 +82,7 @@ function RoadListItem({
           disabled={voting || !voterId}
           onClick={() => handleVote("confirm")}
         >
-          👍 Confirm road
+          👍 {t("community.confirmRoad")}
         </button>
         <button
           type="button"
@@ -88,17 +90,18 @@ function RoadListItem({
           disabled={voting || !voterId}
           onClick={() => handleVote("deny")}
         >
-          👎 Incorrect
+          👎 {t("community.incorrectRoad")}
         </button>
       </div>
       {isMinePost({ ownerUid: road.ownerUid }, voterId ?? undefined) && (
-        <p className="tj-hint">You added this road</p>
+        <p className="tj-hint">{t("community.youAddedRoad")}</p>
       )}
     </li>
   );
 }
 
 export default function CommunityRoadsList({ roads }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const voterId = user?.uid ?? null;
 
@@ -106,7 +109,7 @@ export default function CommunityRoadsList({ roads }: Props) {
 
   return (
     <section className="tj-roads-list">
-      <h3 className="tj-roads-list__title">Community roads</h3>
+      <h3 className="tj-roads-list__title">{t("community.roadsTitle")}</h3>
       <ul className="tj-roads-list__items">
         {roads.slice(0, 20).map((r) => (
           <RoadListItem key={r.id} road={r} voterId={voterId} />

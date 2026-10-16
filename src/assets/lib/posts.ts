@@ -6,8 +6,11 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
+  runTransaction,
   serverTimestamp,
   updateDoc,
+  limit,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { auth, db } from "./firebase";
@@ -15,6 +18,7 @@ import type {
   FloodDepth,
   FloodVehicleAccess,
   Post,
+  PostAudience,
   PostType,
 } from "../../types";
 import { normalizePostType } from "./reportTypes";
@@ -29,6 +33,7 @@ import {
   openGoogleMapsNavigation,
   openWazeNavigation,
 } from "./navigationLinks";
+import { handleFirestoreListenError } from "./firestoreListenErrors";
 
 const col = collection(db, "posts");
 
@@ -63,6 +68,10 @@ function parsePost(id: string, data: Record<string, unknown>, fallbackTs: number
     ...(data.floodVehicleAccess
       ? { floodVehicleAccess: data.floodVehicleAccess as FloodVehicleAccess }
       : {}),
+    ...(data.audience === "followers" || data.audience === "public"
+      ? { audience: data.audience as PostAudience }
+      : {}),
+    ...(data.anonymous === true ? { anonymous: true } : {}),
   };
 }
 
@@ -74,8 +83,12 @@ export async function createPost(input: {
   imageURL?: string;
   ownerUid: string;
   displayName?: string | null;
+  /** Public author label (respects privacy settings). */
+  authorLabel?: string;
   floodDepth?: FloodDepth;
   floodVehicleAccess?: FloodVehicleAccess;
+  audience?: PostAudience;
+  anonymous?: boolean;
 }) {
   const authUid = auth.currentUser?.uid ?? null;
   if (!authUid) {
@@ -98,17 +111,26 @@ export async function createPost(input: {
   }
 
   const now = Date.now();
+  const audience: PostAudience = input.audience ?? "public";
+  const anonymous = input.anonymous === true && audience === "public";
 
   const payload: Record<string, unknown> = {
     type: input.type,
     text,
     lat: input.lat,
     lng: input.lng,
-    username: displayNameOrFallback(input.displayName),
-    ownerUid: authUid,
+    username: anonymous
+      ? "Anonymous"
+      : (input.authorLabel ?? displayNameOrFallback(input.displayName)).slice(0, 120),
+    audience,
+    anonymous: anonymous || false,
     createdAt: now,
     createdAtServer: serverTimestamp(),
   };
+
+  if (!anonymous) {
+    payload.ownerUid = authUid;
+  }
 
   if (imageURL) {
     payload.imageURL = imageURL;
@@ -133,6 +155,16 @@ export async function createPost(input: {
 
   try {
     const ref = await addDoc(col, payload);
+    if (anonymous) {
+      await runTransaction(db, async (tx) => {
+        const secretRef = doc(db, "posts", ref.id, "ownerSecret", "owner");
+        tx.set(secretRef, {
+          ownerUid: authUid,
+          createdAt: now,
+          createdAtServer: serverTimestamp(),
+        });
+      });
+    }
     if (import.meta.env.DEV) {
       console.info("[createPost] saved:", ref.id, { createdAt: now, ownerUid: authUid });
     }
@@ -149,46 +181,48 @@ export async function createPost(input: {
   }
 }
 
-export function createPostErrorMessage(error: unknown): string {
-  if (error instanceof FirebaseError) {
-    if (error.code === "permission-denied") {
-      return "Could not save report: permission denied. Firestore rules may not be published yet.";
-    }
-    return `${error.code}: ${error.message}`;
+/** Returns an i18n key for user-facing post errors (never Firebase internals). */
+export function createPostErrorMessageKey(error: unknown): string {
+  if (error instanceof FirebaseError && import.meta.env.DEV) {
+    console.error("[createPost]", { code: error.code, message: error.message });
   }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Could not save report. Check your connection and Firebase settings.";
+  return "errors.postSaveFailed";
 }
 
-function firestoreErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
+/** @deprecated Prefer createPostErrorMessageKey + t() */
+export function createPostErrorMessage(error: unknown): string {
+  return createPostErrorMessageKey(error);
+}
+
+/**
+ * Map feed: only documents with audience == public (rules-compatible query).
+ * Legacy posts missing `audience` are excluded until dry-run migration sets audience.
+ */
+function applyFeedFilter(rows: Post[], filterMin: number): Post[] {
+  const now = Date.now();
+  const cutoff = now - filterMin * 60_000;
+  return rows.filter((p) => p.createdAt >= cutoff).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function listenActivePosts(
   filterMin: number,
   callback: (posts: Post[]) => void,
-  onError?: (message: string) => void
+  onError?: (i18nKey: string) => void
 ) {
-  const q = query(col, orderBy("createdAt", "desc"));
+  const feedQ = query(
+    col,
+    where("audience", "==", "public"),
+    orderBy("createdAt", "desc"),
+    limit(400)
+  );
 
   let latestRows: Post[] = [];
-
-  const emit = () => {
-    const now = Date.now();
-    const cutoff = now - filterMin * 60_000;
-
-    const visibleRows = latestRows
-      .filter((p) => p.createdAt >= cutoff)
-      .sort((a, b) => b.createdAt - a.createdAt);
-
-    callback(visibleRows);
-  };
-
   let stopped = false;
   let timer: number | undefined;
+
+  const emit = () => {
+    callback(applyFeedFilter(latestRows, filterMin));
+  };
 
   const stop = () => {
     if (stopped) return;
@@ -197,22 +231,18 @@ export function listenActivePosts(
   };
 
   const unsub = onSnapshot(
-    q,
+    feedQ,
     (snap) => {
       if (stopped) return;
-
       const current = Date.now();
-
       latestRows = snap.docs.map((d) =>
         parsePost(d.id, d.data() as Record<string, unknown>, current)
       );
-
       emit();
     },
     (error) => {
-      console.error("[listenActivePosts] onSnapshot error:", error);
       stop();
-      onError?.(firestoreErrorMessage(error));
+      handleFirestoreListenError("trafficFeed", error, onError);
     }
   );
 

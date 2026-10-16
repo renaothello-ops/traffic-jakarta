@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { ErrorEvent } from "maplibre-gl";
 import type { MapRef } from "react-map-gl/maplibre";
 import {
   ensureTomTomTrafficLayer,
@@ -62,8 +63,9 @@ export function useTomTomTrafficLayer(
       ensureTomTomTrafficLayer(map);
     };
 
-    const onError = (e: { sourceId?: string; error?: Error }) => {
-      if (e.sourceId === TOMTOM_SOURCE_ID) {
+    const onError = (e: ErrorEvent) => {
+      const sourceId = (e as ErrorEvent & { sourceId?: string }).sourceId;
+      if (sourceId === TOMTOM_SOURCE_ID) {
         console.error("[tomtom-traffic] tile error:", e.error?.message ?? e);
       }
     };

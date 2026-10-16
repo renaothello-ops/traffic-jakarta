@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { MapViewMode } from "../assets/lib/mapViewMode";
 
 type Props = {
@@ -11,11 +12,12 @@ export default function MapViewModeToggle({
   navigating = false,
   onChange,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <div
       className={`tj-map-view-toggle${navigating ? " tj-map-view-toggle--nav" : ""}`}
       role="group"
-      aria-label="Map view mode"
+      aria-label={t("mapView.modeAria")}
     >
       <button
         type="button"
@@ -23,7 +25,7 @@ export default function MapViewModeToggle({
         aria-pressed={mode === "2d"}
         onClick={() => onChange("2d")}
       >
-        2D
+        {t("mapView.2d")}
       </button>
       <button
         type="button"
@@ -31,7 +33,7 @@ export default function MapViewModeToggle({
         aria-pressed={mode === "3d"}
         onClick={() => onChange("3d")}
       >
-        3D
+        {t("mapView.3d")}
       </button>
     </div>
   );

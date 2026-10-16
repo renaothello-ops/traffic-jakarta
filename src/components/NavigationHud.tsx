@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Destination } from "../types";
 import type { NavigationSnapshot } from "../hooks/useNavigation";
 import {
@@ -6,7 +7,6 @@ import {
   formatDuration,
 } from "../assets/lib/routing";
 import { formatDistance } from "../assets/lib/geo";
-import { maneuverLabel } from "../assets/lib/navigation/maneuvers";
 import ManeuverIcon from "./ManeuverIcon";
 
 type Props = NavigationSnapshot & {
@@ -17,6 +17,10 @@ type Props = NavigationSnapshot & {
   onToggleVoice: () => void;
   onToggleSimulation?: () => void;
 };
+
+function maneuverLabelKey(kind: string): string {
+  return `maneuvers.${kind}`;
+}
 
 export default function NavigationHud({
   destination,
@@ -36,21 +40,36 @@ export default function NavigationHud({
   onToggleVoice,
   onToggleSimulation,
 }: Props) {
+  const { t } = useTranslation();
   const instruction = progress?.current;
+  const maneuver = hasArrived ? "arrive" : instruction?.maneuver ?? "straight";
   const title = hasArrived
-    ? "You've arrived"
-    : instruction?.message || maneuverLabel(instruction?.maneuver ?? "straight");
+    ? t("nav.arrived")
+    : instruction?.message ||
+      t(maneuverLabelKey(maneuver), { defaultValue: t("maneuvers.unknown") });
   const street = hasArrived ? destination.name : instruction?.street;
   const distToTurn = progress?.distanceToManeuverM ?? 0;
+
+  const rerouteLine =
+    rerouteMessage != null
+      ? t(rerouteMessage, { defaultValue: rerouteMessage })
+      : isRerouting
+        ? t("nav.recalculating")
+        : null;
+
+  const locationLine =
+    locationMessage != null
+      ? t(locationMessage, { defaultValue: locationMessage })
+      : null;
 
   return (
     <>
       <div className="tj-nav-hud-top">
-        {isRerouting || rerouteMessage ? (
-          <div className="tj-nav-hud-top__reroute">{rerouteMessage ?? "Recalculating route…"}</div>
+        {rerouteLine ? (
+          <div className="tj-nav-hud-top__reroute">{rerouteLine}</div>
         ) : null}
-        {locationStatus !== "ok" && locationMessage ? (
-          <div className="tj-nav-hud-top__status">{locationMessage}</div>
+        {locationStatus !== "ok" && locationLine ? (
+          <div className="tj-nav-hud-top__status">{locationLine}</div>
         ) : null}
         <div className="tj-nav-instruction">
           <ManeuverIcon kind={hasArrived ? "arrive" : instruction?.maneuver ?? "straight"} />
@@ -70,29 +89,29 @@ export default function NavigationHud({
         <div className="tj-nav-stats">
           <div>
             <strong>{formatDuration(progress?.durationRemainingS ?? 0)}</strong>
-            <span>ETA</span>
+            <span>{t("nav.eta")}</span>
           </div>
           <div>
             <strong>{formatDistanceKm(progress?.distanceRemainingM ?? 0)}</strong>
-            <span>Remaining</span>
+            <span>{t("nav.remaining")}</span>
           </div>
           <div>
             <strong>{formatArrivalTime(progress?.durationRemainingS ?? 0)}</strong>
-            <span>Arrive</span>
+            <span>{t("nav.arrive")}</span>
           </div>
         </div>
         <div className="tj-nav-controls">
           {showRecenter ? (
             <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onRecenter}>
-              Recenter
+              {t("nav.recenter")}
             </button>
           ) : null}
           <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onOverview}>
-            Overview
+            {t("nav.overview")}
           </button>
           {speechSupported ? (
             <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onToggleVoice}>
-              {voiceMuted ? "Unmute" : "Mute"}
+              {voiceMuted ? t("nav.unmute") : t("nav.mute")}
             </button>
           ) : null}
           {import.meta.env.DEV && onToggleSimulation ? (
@@ -101,11 +120,11 @@ export default function NavigationHud({
               className="tj-btn tj-btn--ghost tj-btn--compact"
               onClick={onToggleSimulation}
             >
-              {simulationActive ? "Sim on" : "Sim off"}
+              {simulationActive ? t("nav.simOn") : t("nav.simOff")}
             </button>
           ) : null}
-          <button type="button" className="tj-btn tj-btn--primary tj-btn--compact" onClick={onEnd}>
-            {hasArrived ? "End navigation" : "End"}
+          <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onEnd}>
+            {hasArrived ? t("nav.endNavigation") : t("nav.end")}
           </button>
         </div>
       </div>

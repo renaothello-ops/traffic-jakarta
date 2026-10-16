@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
 import type { Post } from "../types";
 import type { TrustLevel, VerificationTier } from "../assets/lib/trust";
@@ -5,6 +6,7 @@ import {
   getReportTypeMeta,
   postAgeOpacity,
 } from "../assets/lib/reportTypes";
+import { reportTypeLabel } from "../assets/lib/reportTypeI18n";
 import { trustMarkerOpacity } from "../assets/lib/trust";
 
 type Props = {
@@ -30,7 +32,9 @@ export default function PostMarker({
   onSelect,
   onDragEnd,
 }: Props) {
+  const { t } = useTranslation();
   const meta = getReportTypeMeta(post.type);
+  const typeLabel = reportTypeLabel(t, post.type);
   const baseOpacity = postAgeOpacity(post.createdAt, filterMin);
   const opacity = trustMarkerOpacity(trustLevel, baseOpacity);
 
@@ -62,7 +66,11 @@ export default function PostMarker({
             opacity,
             cursor: isDragging ? "grab" : "pointer",
           }}
-          aria-label={`${meta.label} report${verificationTier >= 2 ? ", community verified" : ""}`}
+          aria-label={
+            verificationTier >= 2
+              ? t("postMarker.ariaVerified", { type: typeLabel })
+              : t("postMarker.aria", { type: typeLabel })
+          }
         >
           <span className="tj-post-marker__emoji" aria-hidden>
             {meta.emoji}
