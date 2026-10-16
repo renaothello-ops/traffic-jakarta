@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Traffic Jakarta">
+  <rect width="64" height="64" rx="14" fill="#0b1220"/>
+  <path d="M12 40h40v6H12z" fill="#3b82f6"/>
+  <circle cx="20" cy="46" r="5" fill="#e8edf5"/>
+  <circle cx="44" cy="46" r="5" fill="#e8edf5"/>
+  <path d="M18 18h28l-4 14H22L18 18z" fill="#22c55e"/>
+</svg>

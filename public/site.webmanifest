@@ -1,0 +1,17 @@
+{
+  "name": "Traffic Jakarta",
+  "short_name": "Traffic JKT",
+  "description": "Live traffic map and community reports for Jakarta",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

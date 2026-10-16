@@ -1,0 +1,10 @@
+# Traffic Jakarta — https://traffic-jakarta.web.app
+User-agent: *
+Allow: /
+Allow: /home.html
+Allow: /home-id.html
+Allow: /legal/
+Disallow: /api/
+
+# App UI is a SPA; static landing pages are listed in the sitemap.
+Sitemap: https://traffic-jakarta.web.app/sitemap.xml
