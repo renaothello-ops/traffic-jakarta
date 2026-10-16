@@ -13,7 +13,12 @@ type HeaderBag = Record<string, string | string[] | undefined>;
 
 export function applyRateLimit(
   req: { headers?: HeaderBag },
-  endpoint: "places" | "routing" | "trafficTile"
+  endpoint:
+    | "places"
+    | "routing"
+    | "trafficTile"
+    | "trafficSegment"
+    | "analyzeReport"
 ): RateLimitResult {
   const ip = getClientIp(req.headers);
   const key = `${endpoint}:${ip}`;
@@ -22,6 +27,9 @@ export function applyRateLimit(
     return checkRateLimit(key, PLACES_RATE_LIMIT);
   }
   if (endpoint === "routing") {
+    return checkRateLimit(key, ROUTING_RATE_LIMIT);
+  }
+  if (endpoint === "trafficSegment" || endpoint === "analyzeReport") {
     return checkRateLimit(key, ROUTING_RATE_LIMIT);
   }
   return checkRateLimits(key, [TRAFFIC_TILE_BURST_LIMIT, TRAFFIC_TILE_RATE_LIMIT]);
