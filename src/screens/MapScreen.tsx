@@ -52,8 +52,13 @@ import {
   type MapViewMode,
 } from "../assets/lib/mapViewMode";
 import { applyMapViewMode, setBuildingExtrusionVisible } from "../assets/lib/mapViewApply";
-import { CURRENT_LOCATION_FOCUS_ZOOM } from "../assets/lib/mapCameraConfig";
 import {
+  CURRENT_LOCATION_FOCUS_ZOOM,
+  INITIAL_LOCATION_FLY_ZOOM,
+  INITIAL_MAP_ZOOM,
+} from "../assets/lib/mapCameraConfig";
+import {
+  ensureTomTomTrafficLayer,
   requestManualTomTomTrafficRefresh,
   trafficRefreshDiagnostics,
 } from "../assets/lib/trafficRefresh";
@@ -202,7 +207,7 @@ export default function MapScreen() {
   });
 
   const [center, setCenter] = useState(JAKARTA);
-  const [zoom, setZoom] = useState(15);
+  const [zoom, setZoom] = useState(INITIAL_MAP_ZOOM);
 
   const [openComposer, setOpenComposer] = useState(false);
   const [type, setType] = useState<PostType>("heavy_traffic");
@@ -242,6 +247,8 @@ export default function MapScreen() {
   /** Compact map chrome by default so the map stays the hero on phone and desktop. */
   const [mapChromeExpanded, setMapChromeExpanded] = useState(false);
   const initialFlyDoneRef = useRef(false);
+  /** User panned/zoomed before geolocation — skip automatic recenter. */
+  const userAdjustedViewRef = useRef(false);
   const pendingFlyRef = useRef<{ lat: number; lng: number; zoom: number } | null>(
     null
   );
@@ -694,7 +701,12 @@ export default function MapScreen() {
   // Geolocation often resolves before the map is ready — fly once both exist
   useEffect(() => {
     if (!mapReady || !myPos || initialFlyDoneRef.current) return;
-    if (flyToPoint(myPos.lat, myPos.lng, 14)) {
+    if (userAdjustedViewRef.current) {
+      initialFlyDoneRef.current = true;
+      pendingFlyRef.current = null;
+      return;
+    }
+    if (flyToPoint(myPos.lat, myPos.lng, INITIAL_LOCATION_FLY_ZOOM)) {
       initialFlyDoneRef.current = true;
       pendingFlyRef.current = null;
     }
@@ -1321,12 +1333,17 @@ export default function MapScreen() {
         initialViewState={{
           latitude: center.lat,
           longitude: center.lng,
-          zoom: 13,
+          zoom: INITIAL_MAP_ZOOM,
           pitch: 0,
           bearing: 0,
         }}
         style={{ position: "absolute", inset: 0 }}
         mapStyle={baseMapStyleUrl}
+        onMoveStart={(e) => {
+          if (e.originalEvent) {
+            userAdjustedViewRef.current = true;
+          }
+        }}
         onMove={(e) => {
           setCenter({ lat: e.viewState.latitude, lng: e.viewState.longitude });
           setZoom(e.viewState.zoom);
@@ -1340,6 +1357,7 @@ export default function MapScreen() {
           const map = mapRef.current?.getMap();
           if (map) {
             setBuildingExtrusionVisible(map, mapViewMode === "3d");
+            ensureTomTomTrafficLayer(map);
             ensureTrafficJakartaLayerOrder(map);
           }
           if (import.meta.env.DEV) {

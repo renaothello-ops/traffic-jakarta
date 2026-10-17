@@ -9,7 +9,10 @@ import {
   TOMTOM_SOURCE_ID,
   TRAFFIC_REFRESH_INTERVAL_MS,
 } from "../assets/lib/trafficLayer";
-import { trafficRefreshBucket } from "../assets/lib/trafficRefresh";
+import {
+  recordTomTomTileEvent,
+  trafficRefreshBucket,
+} from "../assets/lib/trafficRefresh";
 
 /**
  * Keeps TomTom traffic raster attached across pan/zoom/style reloads.
@@ -70,6 +73,11 @@ export function useTomTomTrafficLayer(
       }
     };
 
+    const onSourceData = (e: { sourceId?: string; tile?: unknown }) => {
+      if (e.sourceId !== TOMTOM_SOURCE_ID || e.tile == null) return;
+      recordTomTomTileEvent();
+    };
+
     bucketRef.current = trafficRefreshBucket();
     if (isMapStyleMutable(map)) {
       ensureTomTomTrafficLayer(map);
@@ -84,12 +92,14 @@ export function useTomTomTrafficLayer(
 
     map.on("styledata", scheduleRepair);
     map.on("error", onError);
+    map.on("sourcedata", onSourceData);
 
     return () => {
       active = false;
       map.off("load", onLoad);
       map.off("styledata", scheduleRepair);
       map.off("error", onError);
+      map.off("sourcedata", onSourceData);
       if (repairTimer != null) window.clearTimeout(repairTimer);
       if (refreshTimer != null) window.clearInterval(refreshTimer);
     };

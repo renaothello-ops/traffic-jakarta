@@ -19,13 +19,51 @@ export type TrafficRefreshDiagnostics = {
   trafficLastRequestedAt: number | null;
   trafficLastRenderedAt: number | null;
   lastRefreshBucket: number | null;
+  /** DEV: when the TomTom raster source was first attached. */
+  layerFirstAttachedAt: number | null;
+  /** DEV: first sourcedata event with a tile for TomTom (proxy round-trip started). */
+  firstTomTomTileEventAt: number | null;
+  /** DEV: times ensure added a new source (should stay 1 per session unless refresh recreates). */
+  sourceAttachCount: number;
+  /** DEV: full source+layer recreates from refreshTomTomTrafficTiles. */
+  sourceRecreateCount: number;
 };
 
 export const trafficRefreshDiagnostics: TrafficRefreshDiagnostics = {
   trafficLastRequestedAt: null,
   trafficLastRenderedAt: null,
   lastRefreshBucket: null,
+  layerFirstAttachedAt: null,
+  firstTomTomTileEventAt: null,
+  sourceAttachCount: 0,
+  sourceRecreateCount: 0,
 };
+
+export function recordTomTomSourceAttached(at = Date.now()): void {
+  trafficRefreshDiagnostics.sourceAttachCount += 1;
+  if (trafficRefreshDiagnostics.layerFirstAttachedAt == null) {
+    trafficRefreshDiagnostics.layerFirstAttachedAt = at;
+  }
+}
+
+export function recordTomTomSourceRecreate(at = Date.now()): void {
+  trafficRefreshDiagnostics.sourceRecreateCount += 1;
+  recordTomTomSourceAttached(at);
+}
+
+export function recordTomTomTileEvent(at = Date.now()): void {
+  if (trafficRefreshDiagnostics.firstTomTomTileEventAt != null) return;
+  trafficRefreshDiagnostics.firstTomTomTileEventAt = at;
+  if (import.meta.env.DEV) {
+    const attach = trafficRefreshDiagnostics.layerFirstAttachedAt;
+    const ms = attach != null ? at - attach : null;
+    console.info("[tomtom-traffic] first tile event", {
+      msSinceLayerAttach: ms,
+      sourceAttachCount: trafficRefreshDiagnostics.sourceAttachCount,
+      sourceRecreateCount: trafficRefreshDiagnostics.sourceRecreateCount,
+    });
+  }
+}
 
 let lastManualRefreshAt = 0;
 
@@ -74,6 +112,7 @@ export function refreshTomTomTrafficTiles(
   try {
     safeRemoveLayer(map, TOMTOM_LAYER_ID);
     safeRemoveSource(map, TOMTOM_SOURCE_ID);
+    recordTomTomSourceRecreate();
 
     map.addSource(TOMTOM_SOURCE_ID, {
       type: "raster",
@@ -107,6 +146,7 @@ export function ensureTomTomTrafficLayerWithBucket(
   try {
     if (!safeGetSource(map, TOMTOM_SOURCE_ID)) {
       recordTrafficRequested();
+      recordTomTomSourceAttached();
       map.addSource(TOMTOM_SOURCE_ID, {
         type: "raster",
         tiles: [tileUrl],

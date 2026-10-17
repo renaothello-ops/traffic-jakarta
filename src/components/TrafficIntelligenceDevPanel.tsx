@@ -73,6 +73,14 @@ export default function TrafficIntelligenceDevPanel({
         <dd>{secondsAgo(trafficDiagnostics?.trafficLastRenderedAt)}</dd>
         <dt>TomTom tile bucket</dt>
         <dd>{trafficDiagnostics?.lastRefreshBucket ?? "unavailable"}</dd>
+        <dt>TomTom layer attach</dt>
+        <dd>{secondsAgo(trafficDiagnostics?.layerFirstAttachedAt)}</dd>
+        <dt>TomTom first tile event</dt>
+        <dd>{secondsAgo(trafficDiagnostics?.firstTomTomTileEventAt)}</dd>
+        <dt>TomTom source attach count</dt>
+        <dd>{trafficDiagnostics?.sourceAttachCount ?? 0}</dd>
+        <dt>TomTom source recreate count</dt>
+        <dd>{trafficDiagnostics?.sourceRecreateCount ?? 0}</dd>
         <dt>TomTom upstream ts</dt>
         <dd>{fmt(snapshot?.tomTomTrafficTimestamp)}</dd>
         <dt>Community update</dt>
