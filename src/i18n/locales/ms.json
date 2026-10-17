@@ -280,7 +280,10 @@
     "loadFailed": "Couldn't load. Please try again.",
     "trafficFeedLoadFailed": "Couldn't load. Please try again.",
     "messagesLoadFailed": "Couldn't load. Please try again.",
-    "postSaveFailed": "Couldn't save. Please try again."
+    "postSaveFailed": "Couldn't save. Please try again.",
+    "searchPlacesNotConfigured": "Place search is not available on this preview. Try again later.",
+    "searchRateLimited": "Too many search requests. Please wait a moment.",
+    "searchNetwork": "Could not reach search. Check your connection and try again."
   },
   "toast": {
     "reportPosted": "Report posted",
@@ -441,7 +444,8 @@
     "locationUnsupported": "Geolocation is not supported.",
     "locationDenied": "Location permission denied.",
     "locationDeniedLong": "Location access denied. Enable location in browser settings.",
-    "locationUnavailable": "Location temporarily unavailable."
+    "locationUnavailable": "Location temporarily unavailable.",
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
   },
   "maneuvers": {
     "depart": "Head out",

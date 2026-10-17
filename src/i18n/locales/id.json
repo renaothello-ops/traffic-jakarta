@@ -21,7 +21,8 @@
     "locationUnavailable": "Lokasi sementara tidak tersedia.",
     "map": "Peta",
     "community": "Komunitas",
-    "profile": "Profil"
+    "profile": "Profil",
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
   },
   "auth": {
     "signInGoogle": "Lanjutkan dengan Google",
@@ -264,7 +265,10 @@
     "trafficFeedLoadFailed": "Tidak dapat dimuat. Silakan coba lagi.",
     "messagesLoadFailed": "Tidak dapat dimuat. Silakan coba lagi.",
     "loadFailed": "Tidak dapat dimuat. Silakan coba lagi.",
-    "postSaveFailed": "Tidak dapat menyimpan. Silakan coba lagi."
+    "postSaveFailed": "Tidak dapat menyimpan. Silakan coba lagi.",
+    "searchPlacesNotConfigured": "Pencarian tempat tidak tersedia di preview ini. Coba lagi nanti.",
+    "searchRateLimited": "Terlalu banyak permintaan pencarian. Tunggu sebentar.",
+    "searchNetwork": "Tidak dapat terhubung ke layanan pencarian. Periksa koneksi Anda."
   },
   "toast": {
     "reportPosted": "Laporan terkirim",

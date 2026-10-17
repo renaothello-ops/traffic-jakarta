@@ -280,7 +280,10 @@
     "loadFailed": "ไม่สามารถโหลดได้โปรดลองอีกครั้ง",
     "trafficFeedLoadFailed": "ไม่สามารถโหลดได้โปรดลองอีกครั้ง",
     "messagesLoadFailed": "ไม่สามารถโหลดได้โปรดลองอีกครั้ง",
-    "postSaveFailed": "ไม่สามารถบันทึกได้โปรดลองอีกครั้ง"
+    "postSaveFailed": "ไม่สามารถบันทึกได้โปรดลองอีกครั้ง",
+    "searchPlacesNotConfigured": "Place search is not available on this preview. Try again later.",
+    "searchRateLimited": "Too many search requests. Please wait a moment.",
+    "searchNetwork": "Could not reach search. Check your connection and try again."
   },
   "toast": {
     "reportPosted": "โพสต์รายงานแล้ว",
@@ -441,7 +444,8 @@
     "locationUnsupported": "ไม่รองรับตำแหน่งทางภูมิศาสตร์",
     "locationDenied": "การอนุญาตตำแหน่งถูกปฏิเสธ",
     "locationDeniedLong": "การเข้าถึงตำแหน่งถูกปฏิเสธเปิดใช้งานตำแหน่งในการตั้งค่าเบราว์เซอร์",
-    "locationUnavailable": "ตำแหน่งไม่สามารถใช้งานได้ชั่วคราว"
+    "locationUnavailable": "ตำแหน่งไม่สามารถใช้งานได้ชั่วคราว",
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
   },
   "maneuvers": {
     "depart": "มุ่งหน้าออกไป",

@@ -280,7 +280,10 @@
     "loadFailed": "無法加載。請再試一次。",
     "trafficFeedLoadFailed": "無法加載。請再試一次。",
     "messagesLoadFailed": "無法加載。請再試一次。",
-    "postSaveFailed": "無法保存。請再試一次。"
+    "postSaveFailed": "無法保存。請再試一次。",
+    "searchPlacesNotConfigured": "Place search is not available on this preview. Try again later.",
+    "searchRateLimited": "Too many search requests. Please wait a moment.",
+    "searchNetwork": "Could not reach search. Check your connection and try again."
   },
   "toast": {
     "reportPosted": "報告已發布",
@@ -441,7 +444,8 @@
     "locationUnsupported": "不支援地理定位。",
     "locationDenied": "位置權限被拒絕。",
     "locationDeniedLong": "位置存取被拒絕。在瀏覽器設定中啟用位置。",
-    "locationUnavailable": "位置暫時無法使用。"
+    "locationUnavailable": "位置暫時無法使用。",
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
   },
   "maneuvers": {
     "depart": "出發",

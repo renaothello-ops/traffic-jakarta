@@ -280,7 +280,10 @@
     "loadFailed": "تعذر التحميل.يرجى المحاولة مرة أخرى.",
     "trafficFeedLoadFailed": "تعذر التحميل.يرجى المحاولة مرة أخرى.",
     "messagesLoadFailed": "تعذر التحميل.يرجى المحاولة مرة أخرى.",
-    "postSaveFailed": "تعذر الحفظ.يرجى المحاولة مرة أخرى."
+    "postSaveFailed": "تعذر الحفظ.يرجى المحاولة مرة أخرى.",
+    "searchPlacesNotConfigured": "Place search is not available on this preview. Try again later.",
+    "searchRateLimited": "Too many search requests. Please wait a moment.",
+    "searchNetwork": "Could not reach search. Check your connection and try again."
   },
   "toast": {
     "reportPosted": "تم نشر التقرير",
@@ -441,7 +444,8 @@
     "locationUnsupported": "تحديد الموقع الجغرافي غير معتمد.",
     "locationDenied": "تم رفض إذن تحديد الموقع.",
     "locationDeniedLong": "تم رفض الوصول إلى الموقع.تمكين الموقع في إعدادات المتصفح.",
-    "locationUnavailable": "الموقع غير متاح مؤقتا."
+    "locationUnavailable": "الموقع غير متاح مؤقتا.",
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
   },
   "maneuvers": {
     "depart": "اخرج",

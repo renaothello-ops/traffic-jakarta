@@ -17,8 +17,9 @@
     "locationWaiting": "位置情報を待機中…",
     "locationUnsupported": "位置情報はサポートされていません。",
     "locationDenied": "位置情報の許可が拒否されました。",
-    "locationDeniedLong": "Location access denied. Enable location in browser settings.",
+    "locationDeniedLong": "位置情報の利用が拒否されています。ブラウザの設定で位置情報を許可してください。",
     "locationUnavailable": "位置情報が一時的に利用できません。",
+    "locationTimeout": "位置情報の取得がタイムアウトしました。「再試行」をタップするか、開けた場所で再度お試しください。",
     "map": "地図",
     "community": "コミュニティ",
     "profile": "プロフィール"
@@ -264,7 +265,10 @@
     "trafficFeedLoadFailed": "読み込めませんでした。もう一度お試しください。",
     "messagesLoadFailed": "読み込めませんでした。もう一度お試しください。",
     "loadFailed": "読み込めませんでした。もう一度お試しください。",
-    "postSaveFailed": "保存できませんでした。もう一度お試しください。"
+    "postSaveFailed": "保存できませんでした。もう一度お試しください。",
+    "searchPlacesNotConfigured": "このプレビューでは場所検索を利用できません。しばらくしてからお試しください。",
+    "searchRateLimited": "検索リクエストが多すぎます。少し待ってからお試しください。",
+    "searchNetwork": "検索サービスに接続できません。通信を確認してください。"
   },
   "toast": {
     "reportPosted": "報告を投稿しました",

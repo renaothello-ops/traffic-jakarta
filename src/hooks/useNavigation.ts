@@ -354,8 +354,8 @@ export function useNavigation({
           setLocationStatus("denied");
           setLocationMessage("nav.locationDeniedLong");
         } else if (err.code === 3) {
-          setLocationStatus("waiting");
-          setLocationMessage("nav.locationWaiting");
+          setLocationStatus("error");
+          setLocationMessage("nav.locationTimeout");
         } else {
           setLocationStatus("error");
           setLocationMessage("nav.locationUnavailable");

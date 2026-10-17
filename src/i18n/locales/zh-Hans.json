@@ -280,7 +280,10 @@
     "loadFailed": "无法加载。请再试一次。",
     "trafficFeedLoadFailed": "无法加载。请再试一次。",
     "messagesLoadFailed": "无法加载。请再试一次。",
-    "postSaveFailed": "无法保存。请再试一次。"
+    "postSaveFailed": "无法保存。请再试一次。",
+    "searchPlacesNotConfigured": "Place search is not available on this preview. Try again later.",
+    "searchRateLimited": "Too many search requests. Please wait a moment.",
+    "searchNetwork": "Could not reach search. Check your connection and try again."
   },
   "toast": {
     "reportPosted": "报告已发布",
@@ -441,7 +444,8 @@
     "locationUnsupported": "不支持地理定位。",
     "locationDenied": "位置权限被拒绝。",
     "locationDeniedLong": "位置访问被拒绝。在浏览器设置中启用位置。",
-    "locationUnavailable": "位置暂时不可用。"
+    "locationUnavailable": "位置暂时不可用。",
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
   },
   "maneuvers": {
     "depart": "出发",

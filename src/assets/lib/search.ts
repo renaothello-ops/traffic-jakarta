@@ -133,6 +133,18 @@ export class PlacesSearchUnavailableError extends Error {
   }
 }
 
+/** Maps Places API proxy failures to i18n keys under `errors.*`. */
+export function resolvePlacesSearchErrorKey(error: unknown): string {
+  if (error instanceof PlacesSearchUnavailableError) {
+    if (error.status === 503) return "errors.searchPlacesNotConfigured";
+    if (error.status === 429) return "errors.searchRateLimited";
+    if (error.status >= 500) return "errors.searchNetwork";
+    return "errors.searchUnavailable";
+  }
+  if (error instanceof TypeError) return "errors.searchNetwork";
+  return "errors.searchUnavailable";
+}
+
 function logPlacesDiagnostic(info: Record<string, unknown>): void {
   if (!import.meta.env.DEV) return;
   console.info("[places-search]", info);
@@ -334,7 +346,7 @@ export async function fetchPlaceDetails(
 
   return {
     placeId: (place.id ?? placeId).replace(/^places\//, ""),
-    title: place.displayName?.text ?? "Selected place",
+    title: place.displayName?.text ?? "map.selectedPoint",
     address: place.formattedAddress,
     lat,
     lng,

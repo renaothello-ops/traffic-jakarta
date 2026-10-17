@@ -34,6 +34,7 @@ import {
   fetchPlaceDetails,
   formatSuggestionDistance,
   PlacesSearchUnavailableError,
+  resolvePlacesSearchErrorKey,
   resetPlacesSession,
   suggest,
   type SearchContext,
@@ -238,6 +239,8 @@ export default function MapScreen() {
 
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
   const [locErr, setLocErr] = useState<string | null>(null);
+  /** Compact map chrome by default so the map stays the hero on phone and desktop. */
+  const [mapChromeExpanded, setMapChromeExpanded] = useState(false);
   const initialFlyDoneRef = useRef(false);
   const pendingFlyRef = useRef<{ lat: number; lng: number; zoom: number } | null>(
     null
@@ -566,17 +569,13 @@ export default function MapScreen() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         if (requestId !== searchRequestIdRef.current) return;
         setSuggestions([]);
-        if (error instanceof PlacesSearchUnavailableError) {
-          setSearchError(t("errors.searchUnavailable"));
-          if (import.meta.env.DEV) {
-            console.info("[places-search]", {
-              endpoint: "/api/places",
-              httpStatus: error.status,
-              googleMessage: error.googleMessage ?? null,
-            });
-          }
-        } else {
-          setSearchError(t("errors.searchUnavailable"));
+        setSearchError(t(resolvePlacesSearchErrorKey(error)));
+        if (import.meta.env.DEV && error instanceof PlacesSearchUnavailableError) {
+          console.info("[places-search]", {
+            endpoint: "/api/places",
+            httpStatus: error.status,
+            googleMessage: error.googleMessage ?? null,
+          });
         }
       } finally {
         if (requestId === searchRequestIdRef.current) {
@@ -589,7 +588,7 @@ export default function MapScreen() {
       if (searchTimer.current) window.clearTimeout(searchTimer.current);
       searchAbortRef.current?.abort();
     };
-  }, [searchText, searchContext]);
+  }, [searchText, searchContext, t]);
 
   const flyToPoint = useCallback(
     (
@@ -629,7 +628,7 @@ export default function MapScreen() {
       onSuccess?: (point: { lat: number; lng: number }) => void;
     }) => {
       if (userProfile?.privacySettings.useLocation === false) {
-        setLocErr(t("errors.locationPrivacyOff"));
+        setLocErr("errors.locationPrivacyOff");
         return;
       }
       const shouldFly = options?.fly ?? false;
@@ -654,8 +653,8 @@ export default function MapScreen() {
           }
           options?.onSuccess?.(point);
         },
-        (message) => {
-          setLocErr(message);
+        (messageKey) => {
+          setLocErr(messageKey);
         }
       );
     },
@@ -677,8 +676,7 @@ export default function MapScreen() {
           console.info("USER_LOCATION_STATE", { lat: point.lat, lng: point.lng });
         }
       },
-      (message) => {
-        setLocErr(message);
+      () => {
         if (import.meta.env.DEV) {
           console.info("USER_LOCATION_STATE", null);
         }
@@ -910,10 +908,12 @@ export default function MapScreen() {
 
   const selectDestination = useCallback(
     (dest: Destination, fly = true) => {
+      setSelectedPost(null);
       setDestination(dest);
       setDestPickMode(false);
       setShowSug(false);
-      setSearchText(dest.name);
+      setSearchText("");
+      setSearchError(null);
       setRoutePlan(null);
       setRouteError(null);
       nav.endNavigation();
@@ -943,7 +943,10 @@ export default function MapScreen() {
           dest = {
             lat: details.lat,
             lng: details.lng,
-            name: details.title,
+            name:
+              details.title === "map.selectedPoint"
+                ? t("map.selectedPoint")
+                : details.title,
             placeId: details.placeId,
             address: details.address,
           };
@@ -951,15 +954,15 @@ export default function MapScreen() {
         selectDestination(dest, true);
       } catch (error) {
         if (error instanceof PlacesSearchUnavailableError) {
-          setSearchError(t("errors.searchUnavailable"));
+          setSearchError(t(resolvePlacesSearchErrorKey(error)));
         } else {
-          setSearchError(
-            error instanceof Error ? error.message : t("errors.placeLoadFailed")
-          );
+          const msg =
+            error instanceof Error ? error.message : "errors.placeLoadFailed";
+          setSearchError(msg.startsWith("errors.") ? t(msg) : t("errors.placeLoadFailed"));
         }
       }
     },
-    [searchContext, selectDestination]
+    [searchContext, selectDestination, t]
   );
 
   const clearRoute = useCallback(() => {
@@ -968,6 +971,8 @@ export default function MapScreen() {
     setDestination(null);
     setRouteError(null);
     setDestPickMode(false);
+    setSearchText("");
+    setSearchError(null);
     resetPlacesSession();
   }, [nav.endNavigation]);
 
@@ -1002,9 +1007,12 @@ export default function MapScreen() {
           },
           false
         );
+        return;
       }
+      setShowSug(false);
+      setMapChromeExpanded(false);
     },
-    [roadMode, destPickMode, selectDestination]
+    [roadMode, destPickMode, selectDestination, t]
   );
 
   function getMapCenterPoint(): { lat: number; lng: number } {
@@ -1186,6 +1194,14 @@ export default function MapScreen() {
 
   function selectPost(p: Post, focusMap = false) {
     setSelectedPost(p);
+    if (!isNavigating && (destination || routePlan || destPickMode)) {
+      nav.endNavigation();
+      setRoutePlan(null);
+      setDestination(null);
+      setDestPickMode(false);
+      setRouteError(null);
+      setSearchText("");
+    }
     if (focusMap) focusPost(p);
   }
 
@@ -1466,85 +1482,119 @@ export default function MapScreen() {
 
       {showMapChrome && (
         <>
-          <div className="tj-top-bar">
-            <div className="tj-top-row">
-              <select
-                className="tj-select tj-select--compact"
-                value={filterMin}
-                onChange={(e) => setFilterMin(Number(e.target.value))}
-                aria-label={t("map.filterAria")}
-              >
-                <option value={5}>{t("map.filter5m")}</option>
-                <option value={10}>{t("map.filter10m")}</option>
-                <option value={30}>{t("map.filter30m")}</option>
-                <option value={60}>{t("map.filter1h")}</option>
-                <option value={1440}>{t("map.filter1d")}</option>
-              </select>
+          <div
+            className={`tj-top-bar${mapChromeExpanded ? " tj-top-bar--expanded" : " tj-top-bar--compact"}`}
+          >
+            <div className="tj-top-bar__main">
+              <div className="tj-search-wrap">
+                <input
+                  className="tj-input tj-input--search"
+                  value={searchText}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setSearchText(next);
+                    if (next.trim()) setMapChromeExpanded(true);
+                    if (destination && next.trim()) {
+                      setDestination(null);
+                      setRoutePlan(null);
+                      setRouteError(null);
+                      nav.endNavigation();
+                    }
+                  }}
+                  onFocus={() => {
+                    setMapChromeExpanded(true);
+                    if (searchText.trim()) setShowSug(true);
+                  }}
+                  placeholder={t("map.searchPlaceholder")}
+                  aria-label={t("map.searchPlaceholder")}
+                />
+                {searchError ? (
+                  <p className="tj-search-error">{searchError}</p>
+                ) : null}
+                {showSug && mapChromeExpanded ? (
+                  <div className="tj-suggestions">
+                    {searchLoading ? (
+                      <div className="tj-suggestions__empty">{t("map.searchSearching")}</div>
+                    ) : suggestions.length === 0 ? (
+                      <div className="tj-suggestions__empty">
+                        {searchText.trim()
+                          ? t("map.searchNoResults")
+                          : t("map.searchTypeHint")}
+                      </div>
+                    ) : (
+                      suggestions.map((s) => (
+                        <button
+                          key={s.placeId}
+                          type="button"
+                          className="tj-suggestion"
+                          onClick={() => void handleSelectSuggestion(s)}
+                        >
+                          <strong>{s.title}</strong>
+                          {s.subtitle ? (
+                            <span className="tj-suggestion__address">{s.subtitle}</span>
+                          ) : null}
+                          {formatSuggestionDistance(s.distanceM) ? (
+                            <span className="tj-suggestion__distance">
+                              {formatSuggestionDistance(s.distanceM)}
+                            </span>
+                          ) : null}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : null}
+              </div>
 
-              <button type="button" className="tj-chip-btn" onClick={openNewComposer}>
-                ➕ {t("map.postReport")}
-              </button>
+              <div className="tj-top-bar__tools">
+                <select
+                  className="tj-select tj-select--compact"
+                  value={filterMin}
+                  onChange={(e) => setFilterMin(Number(e.target.value))}
+                  aria-label={t("map.filterAria")}
+                >
+                  <option value={5}>{t("map.filter5m")}</option>
+                  <option value={10}>{t("map.filter10m")}</option>
+                  <option value={30}>{t("map.filter30m")}</option>
+                  <option value={60}>{t("map.filter1h")}</option>
+                  <option value={1440}>{t("map.filter1d")}</option>
+                </select>
 
-              {user ? (
-                <>
-                  <MapMessagesButton
-                    unreadCount={messageInbox.unreadMessageCount}
-                    onClick={() => setMessagesOpen(true)}
-                  />
-                  <MapNotificationBell
-                    unreadCount={notificationUnreadCount}
-                    onClick={() => setNotificationCenterOpen(true)}
-                  />
-                </>
-              ) : null}
+                <button type="button" className="tj-chip-btn" onClick={openNewComposer}>
+                  ➕ {t("map.postReport")}
+                </button>
 
-              <div className="tj-counter">{t("map.reportsCount", { count: posts.length })}</div>
+                {user ? (
+                  <>
+                    <MapMessagesButton
+                      unreadCount={messageInbox.unreadMessageCount}
+                      onClick={() => setMessagesOpen(true)}
+                    />
+                    <MapNotificationBell
+                      unreadCount={notificationUnreadCount}
+                      onClick={() => setNotificationCenterOpen(true)}
+                    />
+                  </>
+                ) : null}
+
+                <div className="tj-counter tj-top-counter">
+                  {t("map.reportsCount", { count: posts.length })}
+                </div>
+
+                <button
+                  type="button"
+                  className="tj-icon-btn tj-top-bar__expand"
+                  aria-expanded={mapChromeExpanded}
+                  aria-label={
+                    mapChromeExpanded ? t("common.close") : t("map.searchPlaceholder")
+                  }
+                  onClick={() => setMapChromeExpanded((v) => !v)}
+                >
+                  {mapChromeExpanded ? "▴" : "▾"}
+                </button>
+              </div>
             </div>
 
-            <div className="tj-search-wrap">
-              <input
-                className="tj-input tj-input--search"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onFocus={() => {
-                  if (searchText.trim()) setShowSug(true);
-                }}
-                placeholder={t("map.searchPlaceholder")}
-                aria-label={t("map.searchPlaceholder")}
-              />
-              {searchError && (
-                <p className="tj-search-error">{searchError}</p>
-              )}
-              {showSug && (
-                <div className="tj-suggestions">
-                  {searchLoading ? (
-                    <div className="tj-suggestions__empty">{t("map.searchSearching")}</div>
-                  ) : suggestions.length === 0 ? (
-                    <div className="tj-suggestions__empty">
-                      {searchText.trim() ? t("map.searchNoResults") : t("map.searchTypeHint")}
-                    </div>
-                  ) : (
-                    suggestions.map((s) => (
-                      <button
-                        key={s.placeId}
-                        type="button"
-                        className="tj-suggestion"
-                        onClick={() => void handleSelectSuggestion(s)}
-                      >
-                        <strong>{s.title}</strong>
-                        {s.subtitle && (
-                          <span className="tj-suggestion__address">{s.subtitle}</span>
-                        )}
-                        {formatSuggestionDistance(s.distanceM) && (
-                          <span className="tj-suggestion__distance">
-                            {formatSuggestionDistance(s.distanceM)}
-                          </span>
-                        )}
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
+            {mapChromeExpanded ? (
               <div className="tj-search-actions">
                 <button
                   type="button"
@@ -1552,11 +1602,12 @@ export default function MapScreen() {
                   onClick={() => {
                     setDestPickMode(true);
                     setRouteError(null);
+                    setSelectedPost(null);
                   }}
                 >
                   {t("map.tapMapDestination")}
                 </button>
-                {destination && (
+                {destination ? (
                   <button
                     type="button"
                     className="tj-btn tj-btn--ghost tj-btn--compact"
@@ -1569,9 +1620,9 @@ export default function MapScreen() {
                   >
                     {t("map.destinationMapCenter")}
                   </button>
-                )}
+                ) : null}
               </div>
-            </div>
+            ) : null}
           </div>
 
           <div className="tj-map-controls">
@@ -1582,9 +1633,9 @@ export default function MapScreen() {
             <button type="button" className="tj-locate-btn" onClick={goMyLocation}>
               📍 {t("map.currentLocation")}
             </button>
-            {locErr && (
-              <div className="tj-locate-err">
-                <span>⚠️ {locErr}</span>
+            {locErr ? (
+              <div className="tj-locate-err" role="status">
+                <p className="tj-locate-err__text">{t(locErr)}</p>
                 <button
                   type="button"
                   className="tj-locate-retry"
@@ -1600,7 +1651,7 @@ export default function MapScreen() {
                   {t("common.retry")}
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
 
           {destPickMode && (
@@ -1641,7 +1692,11 @@ export default function MapScreen() {
         </>
       )}
 
-      {destination && !routePlan && activeTab === "map" && (
+      {destination &&
+        !routePlan &&
+        !destPickMode &&
+        activeTab === "map" &&
+        !selectedPost && (
         <DestinationBottomSheet
           destination={destination}
           routing={routing}
@@ -1651,16 +1706,17 @@ export default function MapScreen() {
             if (myPos) {
               void fetchRoute(destination, myPos);
             } else {
-              setRouteError(
-                "Current location is required to calculate a route."
-              );
+              setRouteError(t("errors.routeNeedsLocation"));
             }
           }}
           onClose={clearRoute}
         />
       )}
 
-      {routePlan && activeTab === "map" && nav.phase === "preview" && (
+      {routePlan &&
+        activeTab === "map" &&
+        nav.phase === "preview" &&
+        !selectedPost && (
         <RouteBottomSheet
           routePlan={routePlan}
           routing={routing}
@@ -1673,9 +1729,12 @@ export default function MapScreen() {
           onClearRoute={clearRoute}
           onChangeDestination={() => {
             nav.endNavigation();
+            setDestination(null);
             setDestPickMode(true);
             setRoutePlan(null);
             setRouteError(null);
+            setSearchText("");
+            setSearchError(null);
           }}
         />
       )}
@@ -1784,7 +1843,11 @@ export default function MapScreen() {
         />
       )}
 
-      {selectedPost && !openComposer && (
+      {selectedPost &&
+        !openComposer &&
+        !destination &&
+        !(routePlan && nav.phase === "preview") &&
+        !destPickMode && (
         <PostBottomSheet
           post={selectedPost}
           editing={editing?.id === selectedPost.id}

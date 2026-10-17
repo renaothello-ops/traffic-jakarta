@@ -13,6 +13,22 @@ export function geolocationErrorMessage(code: number, message: string): string {
   }
 }
 
+/** i18n key for map locate UI (nav.* / errors.*). */
+export function geolocationErrorI18nKey(code: number): string {
+  switch (code) {
+    case 1:
+      return "nav.locationDeniedLong";
+    case 2:
+      return "nav.locationUnavailable";
+    case 3:
+      return "nav.locationTimeout";
+    case -1:
+      return "nav.locationUnsupported";
+    default:
+      return "nav.locationUnavailable";
+  }
+}
+
 export function requestCurrentPosition(
   onSuccess: (point: GeoPoint, accuracy: number) => void,
   onError: (message: string, code: number, rawMessage: string) => void
@@ -20,7 +36,7 @@ export function requestCurrentPosition(
   if (!navigator.geolocation) {
     const msg = "This browser does not support geolocation.";
     console.error("Geolocation error", { code: -1, message: msg });
-    onError(msg, -1, msg);
+    onError(geolocationErrorI18nKey(-1), -1, msg);
     return;
   }
 
@@ -28,7 +44,7 @@ export function requestCurrentPosition(
     const msg =
       "Geolocation requires HTTPS (or localhost). Open the app via https:// or http://localhost.";
     console.error("Geolocation error", { code: -1, message: msg });
-    onError(msg, -1, msg);
+    onError(geolocationErrorI18nKey(-1), -1, msg);
     return;
   }
 
@@ -61,7 +77,11 @@ export function requestCurrentPosition(
         console.info("GEOLOCATION_ERROR_CODE", err.code);
         console.info("GEOLOCATION_ERROR_MESSAGE", err.message);
       }
-      onError(geolocationErrorMessage(err.code, err.message), err.code, err.message);
+      onError(
+        geolocationErrorI18nKey(err.code),
+        err.code,
+        geolocationErrorMessage(err.code, err.message)
+      );
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
