@@ -3,15 +3,15 @@
  * No open proxy — fixed TomTom / Google Places paths only.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { calculateRouteProxy, logRouteDiagnostics } from "./calculateRoute";
-import { fetchTomTomFlowSegment } from "./tomtomFlowSegment";
+import { calculateRouteProxy, logRouteDiagnostics } from "./calculateRoute.js";
+import { fetchTomTomFlowSegment } from "./tomtomFlowSegment.js";
 import {
   applyRateLimit,
   rateLimitHeaders,
   safeErrorMessage,
   safeUpstreamError,
-} from "./apiSecurity";
-import { handleAnalyzeReportHttp } from "./analyzeReport";
+} from "./apiSecurity.js";
+import { handleAnalyzeReportHttp } from "./analyzeReport.js";
 import {
   MAX_PLACES_QUERY_LENGTH,
   MAX_PLACES_TEXT_QUERY_LENGTH,
@@ -26,7 +26,7 @@ import {
   parseTileIndex,
   parseTileMode,
   parseTileZoom,
-} from "./apiValidation";
+} from "./apiValidation.js";
 
 function readRequestBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {

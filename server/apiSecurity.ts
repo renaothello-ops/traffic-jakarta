@@ -7,7 +7,7 @@ import {
   TRAFFIC_TILE_BURST_LIMIT,
   TRAFFIC_TILE_RATE_LIMIT,
   type RateLimitResult,
-} from "./rateLimit";
+} from "./rateLimit.js";
 
 type HeaderBag = Record<string, string | string[] | undefined>;
 

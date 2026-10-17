@@ -1,4 +1,4 @@
-import { applyRateLimit, rateLimitHeaders, safeErrorMessage } from "./apiSecurity";
+import { applyRateLimit, rateLimitHeaders, safeErrorMessage } from "./apiSecurity.js";
 
 type TrafficTextCategory =
   | "accident"

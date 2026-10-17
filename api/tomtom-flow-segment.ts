@@ -2,8 +2,8 @@ import {
   applyRateLimit,
   rateLimitHeaders,
   safeErrorMessage,
-} from "../server/apiSecurity";
-import { fetchTomTomFlowSegment } from "../server/tomtomFlowSegment";
+} from "../server/apiSecurity.js";
+import { fetchTomTomFlowSegment } from "../server/tomtomFlowSegment.js";
 
 export default async function handler(
   req: { method?: string; query?: Record<string, string>; headers?: Record<string, string | string[] | undefined> },

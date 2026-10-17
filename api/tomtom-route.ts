@@ -1,13 +1,13 @@
 import {
   calculateRouteProxy,
   logRouteDiagnostics,
-} from "../server/calculateRoute";
+} from "../server/calculateRoute.js";
 import {
   applyRateLimit,
   rateLimitHeaders,
   safeErrorMessage,
-} from "../server/apiSecurity";
-import { parseRouteCoordinatePair } from "../server/apiValidation";
+} from "../server/apiSecurity.js";
+import { parseRouteCoordinatePair } from "../server/apiValidation.js";
 
 export default async function handler(req: { query?: Record<string, string>; headers?: Record<string, string | string[] | undefined> }, res: {
   status: (code: number) => { json: (body: unknown) => void };

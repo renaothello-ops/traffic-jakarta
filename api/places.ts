@@ -4,7 +4,7 @@ import {
   rateLimitHeaders,
   safeErrorMessage,
   safeUpstreamError,
-} from "../server/apiSecurity";
+} from "../server/apiSecurity.js";
 import {
   MAX_PLACES_QUERY_LENGTH,
   MAX_PLACES_TEXT_QUERY_LENGTH,
@@ -15,7 +15,7 @@ import {
   parsePlacesAction,
   parsePlacesQuery,
   parsePlacesRadius,
-} from "../server/apiValidation";
+} from "../server/apiValidation.js";
 
 type LatLng = { latitude: number; longitude: number };
 

@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { handleApiHttp } from "./server/apiHttp";
+import { handleApiHttp } from "./server/apiHttp.js";
 
 function tomtomProxy(): Plugin {
   return {

@@ -4,12 +4,12 @@ import {
   rateLimitHeaders,
   safeErrorMessage,
   safeUpstreamError,
-} from "../server/apiSecurity";
+} from "../server/apiSecurity.js";
 import {
   parseTileIndex,
   parseTileMode,
   parseTileZoom,
-} from "../server/apiValidation";
+} from "../server/apiValidation.js";
 
 export default async function handler(req: { query?: Record<string, string>; headers?: Record<string, string | string[] | undefined> }, res: {
   status: (code: number) => { send: (body: string | Buffer) => void };

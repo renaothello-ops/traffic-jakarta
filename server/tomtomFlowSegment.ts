@@ -1,7 +1,7 @@
 import {
   parseLatitude,
   parseLongitude,
-} from "./apiValidation";
+} from "./apiValidation.js";
 
 export type TomTomSegmentResponse = {
   currentSpeedKph: number | null;
