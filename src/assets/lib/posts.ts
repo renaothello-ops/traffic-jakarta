@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -7,13 +6,14 @@ import {
   orderBy,
   query,
   where,
-  runTransaction,
   serverTimestamp,
   updateDoc,
   limit,
+  writeBatch,
 } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { auth, db } from "./firebase";
+import { createPostErrorMessageKey } from "./postErrors";
 import type {
   FloodDepth,
   FloodVehicleAccess,
@@ -153,20 +153,25 @@ export async function createPost(input: {
     });
   }
 
+  const ref = doc(col);
+  const batch = writeBatch(db);
+  batch.set(ref, payload);
+  if (anonymous) {
+    batch.set(doc(db, "posts", ref.id, "ownerSecret", "owner"), {
+      ownerUid: authUid,
+      createdAt: now,
+      createdAtServer: serverTimestamp(),
+    });
+  }
+
   try {
-    const ref = await addDoc(col, payload);
-    if (anonymous) {
-      await runTransaction(db, async (tx) => {
-        const secretRef = doc(db, "posts", ref.id, "ownerSecret", "owner");
-        tx.set(secretRef, {
-          ownerUid: authUid,
-          createdAt: now,
-          createdAtServer: serverTimestamp(),
-        });
-      });
-    }
+    await batch.commit();
     if (import.meta.env.DEV) {
-      console.info("[createPost] saved:", ref.id, { createdAt: now, ownerUid: authUid });
+      console.info("[createPost] saved:", ref.id, {
+        createdAt: now,
+        ownerUid: authUid,
+        anonymous,
+      });
     }
     return ref.id;
   } catch (error) {
@@ -181,13 +186,7 @@ export async function createPost(input: {
   }
 }
 
-/** Returns an i18n key for user-facing post errors (never Firebase internals). */
-export function createPostErrorMessageKey(error: unknown): string {
-  if (error instanceof FirebaseError && import.meta.env.DEV) {
-    console.error("[createPost]", { code: error.code, message: error.message });
-  }
-  return "errors.postSaveFailed";
-}
+export { createPostErrorMessageKey } from "./postErrors";
 
 /** @deprecated Prefer createPostErrorMessageKey + t() */
 export function createPostErrorMessage(error: unknown): string {

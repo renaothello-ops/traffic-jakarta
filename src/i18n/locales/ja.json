@@ -266,6 +266,12 @@
     "messagesLoadFailed": "読み込めませんでした。もう一度お試しください。",
     "loadFailed": "読み込めませんでした。もう一度お試しください。",
     "postSaveFailed": "保存できませんでした。もう一度お試しください。",
+    "postPermissionDenied": "投稿する権限がありません。再度サインインするか、PreviewのFirestoreルールが最新か確認してください。",
+    "postUnavailable": "サーバーに接続できませんでした。通信を確認してから再試行してください。",
+    "postFailedPrecondition": "この内容では保存できませんでした。入力を確認して再試行してください。",
+    "postInvalidLocation": "投稿する前に、地図上で有効な位置を選んでください。",
+    "postInvalidImage": "写真をアップロードできませんでした。小さな画像にするか、写真なしで投稿してください。",
+    "postInvalidType": "この報告タイプはサポートされていません。",
     "searchPlacesNotConfigured": "このプレビューでは場所検索を利用できません。しばらくしてからお試しください。",
     "searchRateLimited": "検索リクエストが多すぎます。少し待ってからお試しください。",
     "searchNetwork": "検索サービスに接続できません。通信を確認してください。"

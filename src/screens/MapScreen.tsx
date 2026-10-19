@@ -1102,7 +1102,7 @@ export default function MapScreen() {
   }
 
   async function onSubmit() {
-    if (!locationConfirmed) return;
+    if (!locationConfirmed || submitting) return;
     const currentUser = auth.currentUser;
     if (!currentUser) {
       setComposerError(t("errors.composerSignIn"));
@@ -1110,11 +1110,11 @@ export default function MapScreen() {
     }
     setSubmitting(true);
     setComposerError(null);
+    const postLat = draftPos?.lat ?? center.lat;
+    const postLng = draftPos?.lng ?? center.lng;
+    const isAnonymous = postAnonymous && postAudience === "public";
     try {
-      const postLat = draftPos?.lat ?? center.lat;
-      const postLng = draftPos?.lng ?? center.lng;
-
-      await createPost({
+      const postId = await createPost({
         type,
         text,
         lat: postLat,
@@ -1124,7 +1124,7 @@ export default function MapScreen() {
         displayName: currentUser.displayName,
         authorLabel: formatPublicAuthorLabel(userProfile),
         audience: postAudience,
-        anonymous: postAnonymous && postAudience === "public",
+        anonymous: isAnonymous,
         ...(type === "flooded"
           ? { floodDepth, floodVehicleAccess }
           : {}),
@@ -1132,7 +1132,30 @@ export default function MapScreen() {
 
       resetDraft();
       setOpenComposer(false);
+      setActiveTab("map");
       setToast(t("toast.reportPosted"));
+
+      const createdPost: Post = {
+        id: postId,
+        type,
+        text: text.trim(),
+        lat: postLat,
+        lng: postLng,
+        createdAt: Date.now(),
+        imageURL: image ?? undefined,
+        username: isAnonymous
+          ? "Anonymous"
+          : formatPublicAuthorLabel(userProfile),
+        ownerUid: isAnonymous ? undefined : currentUser.uid,
+        audience: postAudience,
+        anonymous: isAnonymous,
+        confirmCount: 0,
+        denyCount: 0,
+        ...(type === "flooded"
+          ? { floodDepth, floodVehicleAccess }
+          : {}),
+      };
+      selectPost(createdPost, true);
     } catch (error) {
       console.error("CREATE_POST_ERROR", error);
       setComposerError(t(createPostErrorMessageKey(error)));

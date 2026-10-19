@@ -283,7 +283,13 @@
     "postSaveFailed": "تعذر الحفظ.يرجى المحاولة مرة أخرى.",
     "searchPlacesNotConfigured": "Place search is not available on this preview. Try again later.",
     "searchRateLimited": "Too many search requests. Please wait a moment.",
-    "searchNetwork": "Could not reach search. Check your connection and try again."
+    "searchNetwork": "Could not reach search. Check your connection and try again.",
+    "postPermissionDenied": "You don't have permission to post. Sign in again or check that this preview uses current Firestore rules.",
+    "postUnavailable": "Could not reach the server. Check your connection and try again.",
+    "postFailedPrecondition": "This post could not be saved in its current state. Review your report and try again.",
+    "postInvalidLocation": "Choose a valid location on the map before posting.",
+    "postInvalidImage": "This photo could not be uploaded. Try a smaller image or post without a photo.",
+    "postInvalidType": "This report type is not supported."
   },
   "toast": {
     "reportPosted": "تم نشر التقرير",
