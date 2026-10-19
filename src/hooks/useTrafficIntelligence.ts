@@ -32,7 +32,7 @@ export function useTrafficIntelligence({
   result: TrafficIntelligenceResult | null;
   loadingTomTom: boolean;
 } {
-  const now = useVerificationClock(30_000);
+  const now = useVerificationClock(true, 30_000);
   const [tomtom, setTomtom] = useState<TomTomLiveNumeric | null>(null);
   const [loadingTomTom, setLoadingTomTom] = useState(false);
 

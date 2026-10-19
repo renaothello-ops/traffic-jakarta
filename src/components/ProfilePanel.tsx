@@ -6,7 +6,6 @@ import { useAuth } from "../contexts/useAuth";
 import { useUserProfile } from "../contexts/UserProfileContext";
 import { getReportTypeMeta } from "../assets/lib/reportTypes";
 import { reportTypeLabel } from "../assets/lib/reportTypeI18n";
-import RelativeTime from "./RelativeTime";
 import { saveAuthReturnState } from "../assets/lib/authReturnState";
 import {
   deleteAccountAndData,
@@ -212,27 +211,26 @@ function ProfilePanel({
         </p>
       ) : null}
 
-      <section className="tj-profile-section tj-profile-account-card">
-        <UserAvatar profile={effectiveProfile} authPhotoURL={user.photoURL} size={56} />
-        <div className="tj-profile-account-card__meta">
-          <strong>{effectiveProfile.displayName || user.displayName}</strong>
+      <button
+        type="button"
+        className="tj-profile-hero"
+        onClick={() => setView("edit")}
+      >
+        <UserAvatar profile={effectiveProfile} authPhotoURL={user.photoURL} size={72} />
+        <div className="tj-profile-hero__meta">
+          <strong className="tj-profile-hero__name">
+            {effectiveProfile.displayName || user.displayName}
+          </strong>
           {effectiveProfile.username ? (
             <p className="tj-profile-handle">@{effectiveProfile.username}</p>
           ) : (
             <p className="tj-hint">{t("profile.usernameRequired")}</p>
           )}
-          {user.email ? (
-            <p className="tj-profile-user__email">{user.email}</p>
-          ) : null}
+          <span className="tj-profile-hero__edit">
+            <IconPencil size={14} /> {t("profile.editProfile")}
+          </span>
         </div>
-        <button
-          type="button"
-          className="tj-btn tj-btn--ghost tj-btn--compact"
-          onClick={() => setView("edit")}
-        >
-          <IconPencil size={16} /> {t("profile.editProfile")}
-        </button>
-      </section>
+      </button>
 
       <section className="tj-profile-section">
         <h2 className="tj-profile-section__title">{t("settings.preferences")}</h2>
@@ -294,30 +292,25 @@ function ProfilePanel({
         {myPosts.length === 0 ? (
           <p className="tj-tab-panel__empty">{t("profile.myPostsEmpty")}</p>
         ) : (
-          <div className="tj-comment-list">
+          <div className="tj-post-grid" role="list">
             {myPosts.map((p) => {
               const meta = getReportTypeMeta(p.type);
               return (
                 <button
                   key={p.id}
                   type="button"
-                  className="tj-comment-card"
+                  role="listitem"
+                  className="tj-post-grid__cell"
                   onClick={() => onOpenPost(p)}
+                  aria-label={reportTypeLabel(t, p.type)}
                 >
-                  <span className="tj-comment-card__emoji" aria-hidden>
-                    {meta.emoji}
-                  </span>
-                  <span className="tj-comment-card__body">
-                    <span className="tj-comment-card__row">
-                      <strong>{reportTypeLabel(t, p.type)}</strong>
-                      <span className="tj-comment-card__time">
-                        <RelativeTime ts={p.createdAt} />
-                      </span>
+                  {p.imageURL ? (
+                    <img src={p.imageURL} alt="" className="tj-post-grid__img" />
+                  ) : (
+                    <span className="tj-post-grid__emoji" aria-hidden>
+                      {meta.emoji}
                     </span>
-                    {p.text && (
-                      <span className="tj-comment-card__text">{p.text}</span>
-                    )}
-                  </span>
+                  )}
                 </button>
               );
             })}

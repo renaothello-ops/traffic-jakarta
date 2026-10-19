@@ -16,6 +16,7 @@ import {
   IconMessageCircle,
   IconTraffic,
   IconTriangleAlert,
+  IconX,
 } from "../icons/AppIcons";
 
 type Props = {
@@ -176,11 +177,16 @@ export default function NotificationCenterSheet({
 
   return (
     <div className="tj-sheet-backdrop">
-      <div className="tj-sheet tj-sheet--scroll">
-        <div className="tj-sheet__header">
+      <div className="tj-sheet tj-sheet--scroll tj-activity-sheet">
+        <div className="tj-sheet__header tj-activity-sheet__header">
           <h2 className="tj-sheet__title">{t("notifications.centerTitle")}</h2>
-          <button type="button" className="tj-icon-btn" onClick={onClose}>
-            {t("common.close")}
+          <button
+            type="button"
+            className="tj-icon-btn tj-icon-btn--touch"
+            aria-label={t("common.close")}
+            onClick={onClose}
+          >
+            <IconX size={22} />
           </button>
         </div>
 

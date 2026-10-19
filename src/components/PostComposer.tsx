@@ -6,6 +6,7 @@ import type {
   PostType,
 } from "../types";
 import ReportTypePicker from "./ReportTypePicker";
+import { IconX } from "./icons/AppIcons";
 import {
   FLOOD_DEPTH_OPTIONS,
   FLOOD_VEHICLE_OPTIONS,
@@ -79,7 +80,7 @@ export default function PostComposer({
               onClick={onClose}
               aria-label={t("common.cancel")}
             >
-              ✕
+              <IconX size={22} />
             </button>
           </div>
 
@@ -106,12 +107,12 @@ export default function PostComposer({
 
   return (
     <div className="tj-sheet-backdrop">
-      <div className="tj-sheet tj-sheet--composer">
+      <div className="tj-sheet tj-sheet--composer tj-composer-sheet">
         <div className="tj-sheet__handle" />
         <div className="tj-sheet__header">
           <h2 className="tj-sheet__title">{t("composer.titleNew")}</h2>
           <button type="button" className="tj-icon-btn" onClick={onClose} aria-label={t("common.close")}>
-            ✕
+            <IconX size={22} />
           </button>
         </div>
 

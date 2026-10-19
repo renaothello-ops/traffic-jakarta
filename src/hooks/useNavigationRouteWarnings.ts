@@ -91,7 +91,7 @@ export function useNavigationRouteWarnings({
   userLng,
   navigationSessionKey,
 }: Params): NavigationRouteWarningsResult {
-  const now = useVerificationClock(45_000);
+  const now = useVerificationClock(true, 45_000);
   const surfacedRef = useRef<Map<string, SurfacedWarningState>>(new Map());
   const sessionKeyRef = useRef<string>("");
 

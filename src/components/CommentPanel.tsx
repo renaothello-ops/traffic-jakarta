@@ -7,7 +7,7 @@ import { getReportTypeMeta } from "../assets/lib/reportTypes";
 import { reportTypeLabel } from "../assets/lib/reportTypeI18n";
 import { timeAgo } from "../assets/lib/timeAgo";
 import { isPublicTrafficPost, sanitizePostForViewer } from "../assets/lib/postAccess";
-import MapMessagesButton from "./MapMessagesButton";
+import { IconSearch } from "./icons/AppIcons";
 
 type Props = {
   posts: EnrichedPost[];
@@ -18,8 +18,6 @@ type Props = {
   onSelect: (post: EnrichedPost) => void;
   onOpenProfile?: (uid: string) => void;
   onOpenUserSearch?: () => void;
-  onOpenMessages?: () => void;
-  messageUnreadCount?: number;
 };
 
 type CommunityTab = "all" | "following";
@@ -101,7 +99,7 @@ function ReportCard({
   return (
     <button
       type="button"
-      className="tj-comment-card"
+      className="tj-comment-card tj-feed-card"
       onClick={() => onSelect(sanitizePostForViewer(post, viewerUid) as EnrichedPost)}
     >
       {post.imageURL ? (
@@ -153,8 +151,6 @@ function CommentPanel({
   onSelect,
   onOpenProfile,
   onOpenUserSearch,
-  onOpenMessages,
-  messageUnreadCount = 0,
 }: Props) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<CommunityTab>("all");
@@ -179,36 +175,27 @@ function CommentPanel({
   const recent = [...feedPosts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 40);
 
   return (
-    <div className="tj-tab-panel__content">
-      <header className="tj-tab-panel__header tj-community-header">
-        <div>
-          <h1 className="tj-tab-panel__title">{t("nav.community")}</h1>
-          <p className="tj-tab-panel__subtitle">{t("comments.communitySubtitle")}</p>
-        </div>
-        <div className="tj-community-header__actions">
-          {viewerUid && onOpenMessages ? (
-            <MapMessagesButton
-              unreadCount={messageUnreadCount}
-              onClick={onOpenMessages}
-            />
-          ) : null}
-          {onOpenUserSearch ? (
-            <button
-              type="button"
-              className="tj-btn tj-btn--ghost tj-btn--compact"
-              onClick={onOpenUserSearch}
-            >
-              {t("social.userSearch")}
-            </button>
-          ) : null}
-        </div>
+    <div className="tj-tab-panel__content tj-feed-panel">
+      <header className="tj-feed-header">
+        <h1 className="tj-feed-header__title">{t("nav.nearby")}</h1>
+        {onOpenUserSearch ? (
+          <button
+            type="button"
+            className="tj-icon-btn tj-icon-btn--touch"
+            aria-label={t("social.userSearch")}
+            onClick={onOpenUserSearch}
+          >
+            <IconSearch size={22} />
+          </button>
+        ) : null}
       </header>
 
-      <div className="tj-community-tabs" role="tablist">
+      <div className="tj-segment" role="tablist" aria-label={t("nav.community")}>
         <button
           type="button"
           role="tab"
-          className={`tj-community-tab${tab === "all" ? " tj-community-tab--active" : ""}`}
+          aria-selected={tab === "all"}
+          className={`tj-segment__btn${tab === "all" ? " tj-segment__btn--active" : ""}`}
           onClick={() => setTab("all")}
         >
           {t("community.tabAllPublic")}
@@ -216,7 +203,8 @@ function CommentPanel({
         <button
           type="button"
           role="tab"
-          className={`tj-community-tab${tab === "following" ? " tj-community-tab--active" : ""}`}
+          aria-selected={tab === "following"}
+          className={`tj-segment__btn${tab === "following" ? " tj-segment__btn--active" : ""}`}
           onClick={() => setTab("following")}
         >
           {t("community.tabFollowing")}

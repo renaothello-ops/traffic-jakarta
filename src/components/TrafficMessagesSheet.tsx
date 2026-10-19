@@ -16,6 +16,7 @@ import { useAuth } from "../contexts/useAuth";
 import { timeAgo } from "../assets/lib/timeAgo";
 import { useMountedRef } from "../hooks/useMountedRef";
 import UserAvatar from "./UserAvatar";
+import { IconX } from "./icons/AppIcons";
 
 type Props = {
   onClose: () => void;
@@ -215,12 +216,13 @@ export default function TrafficMessagesSheet({
 
   return (
     <div className="tj-sheet-backdrop">
-      <div className="tj-sheet tj-sheet--scroll">
-        <div className="tj-sheet__header">
+      <div className="tj-sheet tj-sheet--scroll tj-dm-sheet">
+        <div className="tj-sheet__header tj-dm-sheet__header">
           <h2 className="tj-sheet__title">{t("messages.title")}</h2>
           <button
             type="button"
-            className="tj-icon-btn"
+            className="tj-icon-btn tj-icon-btn--touch"
+            aria-label={t("common.close")}
             onClick={() => {
               if (import.meta.env.DEV) {
                 console.debug("[TrafficMessages] close pressed");
@@ -228,7 +230,7 @@ export default function TrafficMessagesSheet({
               onClose();
             }}
           >
-            {t("common.close")}
+            <IconX size={22} />
           </button>
         </div>
 

@@ -128,7 +128,6 @@ import QuickReportSheet from "../components/QuickReportSheet";
 import NavRouteReportBanner from "../components/NavRouteReportBanner";
 import TrafficIntelligenceDevPanel from "../components/TrafficIntelligenceDevPanel";
 import MapNotificationBell from "../components/MapNotificationBell";
-import MapMessagesButton from "../components/MapMessagesButton";
 import { useMessageInboxSummary } from "../hooks/useMessageInboxSummary";
 import NotificationCenterSheet from "../components/settings/NotificationCenterSheet";
 import TrafficIntelligenceDetailSheet from "../components/TrafficIntelligenceDetailSheet";
@@ -207,7 +206,6 @@ export default function MapScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [communityRoads, setCommunityRoads] = useState<CommunityRoad[]>([]);
   const enrichedCommunityRoads = useEnrichedCommunityRoads(communityRoads);
-  const enrichedPosts = useEnrichedPosts(posts);
   const [filterMin, setFilterMin] = useState<number>(() => {
     const saved = localStorage.getItem(FILTER_KEY);
     return saved ? Number(saved) : 10;
@@ -217,6 +215,18 @@ export default function MapScreen() {
   const [zoom, setZoom] = useState(INITIAL_MAP_ZOOM);
 
   const [openComposer, setOpenComposer] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(
+    loadSelectedPostFromStorage
+  );
+  const listenPostVotes =
+    activeTab === "map" ||
+    activeTab === "comment" ||
+    openComposer ||
+    selectedPost != null;
+  const enrichedPosts = useEnrichedPosts(posts, {
+    listenVotes: listenPostVotes,
+    priorityPostIds: selectedPost?.id ? [selectedPost.id] : [],
+  });
   const [type, setType] = useState<PostType>("heavy_traffic");
   const [postAudience, setPostAudience] = useState<PostAudience>("public");
   const [postAnonymous, setPostAnonymous] = useState(false);
@@ -277,10 +287,6 @@ export default function MapScreen() {
   const [editFloodDepth, setEditFloodDepth] = useState<FloodDepth>("unknown");
   const [editFloodVehicleAccess, setEditFloodVehicleAccess] =
     useState<FloodVehicleAccess>("not_passable");
-
-  const [selectedPost, setSelectedPost] = useState<Post | null>(
-    loadSelectedPostFromStorage
-  );
 
   const visibleMapPosts = useMemo(() => {
     const selectedId = selectedPost?.id;
@@ -1638,26 +1644,12 @@ export default function MapScreen() {
                   <option value={1440}>{t("map.filter1d")}</option>
                 </select>
 
-                <button type="button" className="tj-chip-btn" onClick={openNewComposer}>
-                  ➕ {t("map.postReport")}
-                </button>
-
                 {user ? (
-                  <>
-                    <MapMessagesButton
-                      unreadCount={messageInbox.unreadMessageCount}
-                      onClick={() => setMessagesOpen(true)}
-                    />
-                    <MapNotificationBell
-                      unreadCount={notificationUnreadCount}
-                      onClick={() => setNotificationCenterOpen(true)}
-                    />
-                  </>
+                  <MapNotificationBell
+                    unreadCount={notificationUnreadCount}
+                    onClick={() => setNotificationCenterOpen(true)}
+                  />
                 ) : null}
-
-                <div className="tj-counter tj-top-counter">
-                  {t("map.reportsCount", { count: posts.length })}
-                </div>
 
                 <button
                   type="button"
@@ -1902,8 +1894,6 @@ export default function MapScreen() {
           onSelect={(p) => selectPost(p)}
           onOpenProfile={(uid) => setPublicProfileUid(uid)}
           onOpenUserSearch={() => setUserSearchOpen(true)}
-          onOpenMessages={() => setMessagesOpen(true)}
-          messageUnreadCount={messageInbox.unreadMessageCount}
         />
       </div>
 

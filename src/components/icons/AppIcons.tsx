@@ -220,6 +220,24 @@ export function IconNavPlus(props: IconProps = defaults) {
 }
 
 /** Bottom nav — direct messages */
+export function IconX(props: IconProps = defaults) {
+  return (
+    <Svg {...props}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </Svg>
+  );
+}
+
+export function IconSearch(props: IconProps = defaults) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </Svg>
+  );
+}
+
 export function IconNavSend(props: IconProps = defaults) {
   return (
     <Svg {...props}>

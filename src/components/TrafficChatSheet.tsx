@@ -18,6 +18,7 @@ import { reportTypeLabel } from "../assets/lib/reportTypeI18n";
 import { timeAgo } from "../assets/lib/timeAgo";
 import { useAuth } from "../contexts/useAuth";
 import { useMountedRef } from "../hooks/useMountedRef";
+import { IconX } from "./icons/AppIcons";
 
 type Props = {
   thread: TrafficThreadSummary;
@@ -93,8 +94,8 @@ export default function TrafficChatSheet({
 
   return (
     <div className="tj-sheet-backdrop">
-      <div className="tj-sheet tj-sheet--scroll tj-chat-sheet">
-        <div className="tj-sheet__header">
+      <div className="tj-sheet tj-sheet--scroll tj-chat-sheet tj-dm-chat">
+        <div className="tj-sheet__header tj-dm-sheet__header">
           <button
             type="button"
             className="tj-chat-header"
@@ -103,8 +104,13 @@ export default function TrafficChatSheet({
             <strong>{peerName || t("common.loading")}</strong>
             {peerUsername ? <span>@{peerUsername}</span> : null}
           </button>
-          <button type="button" className="tj-icon-btn" onClick={onClose}>
-            {t("common.close")}
+          <button
+            type="button"
+            className="tj-icon-btn tj-icon-btn--touch"
+            aria-label={t("common.close")}
+            onClick={onClose}
+          >
+            <IconX size={22} />
           </button>
         </div>
 
