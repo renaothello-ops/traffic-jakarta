@@ -11,6 +11,8 @@ import {
   deleteDoc,
   collection,
   addDoc,
+  serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 
 const PROJECT_ID = "demotrafficjakarta";
@@ -64,6 +66,58 @@ describe("Firestore security rules", () => {
     await withClearDb(async () => {
       const alice = testEnv.authenticatedContext("alice");
       await assertSucceeds(addDoc(collection(alice.firestore(), "posts"), validPost()));
+    });
+  });
+
+  it("B2a — user cannot forge ownerSecret with another uid", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "posts/anon-forge"), {
+          type: "heavy_traffic",
+          text: "",
+          lat: -6.2,
+          lng: 106.8,
+          username: "Anonymous",
+          audience: "public",
+          anonymous: true,
+          createdAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertFails(
+        setDoc(doc(bob.firestore(), "posts/anon-forge/ownerSecret/owner"), {
+          ownerUid: "alice",
+          createdAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("B2 — authenticated user can create anonymous public post + ownerSecret (createPost batch)", async () => {
+    await withClearDb(async () => {
+      const alice = testEnv.authenticatedContext("alice");
+      const fs = alice.firestore();
+      const postRef = doc(collection(fs, "posts"));
+      const now = Date.now();
+      const batch = writeBatch(fs);
+      batch.set(postRef, {
+        type: "heavy_traffic",
+        text: "",
+        lat: -6.2,
+        lng: 106.8,
+        username: "Anonymous",
+        audience: "public",
+        anonymous: true,
+        createdAt: now,
+        createdAtServer: serverTimestamp(),
+      });
+      batch.set(doc(fs, "posts", postRef.id, "ownerSecret", "owner"), {
+        ownerUid: "alice",
+        createdAt: now,
+        createdAtServer: serverTimestamp(),
+      });
+      await assertSucceeds(batch.commit());
+      await assertSucceeds(getDoc(postRef));
     });
   });
 
