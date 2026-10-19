@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Marker } from "react-map-gl/maplibre";
 import type { Post } from "../types";
@@ -21,7 +22,7 @@ type Props = {
   onDragEnd: (post: Post, lat: number, lng: number) => void;
 };
 
-export default function PostMarker({
+function PostMarker({
   post,
   filterMin,
   isDragging,
@@ -80,3 +81,19 @@ export default function PostMarker({
     </Marker>
   );
 }
+
+export default memo(PostMarker, (prev, next) => {
+  return (
+    prev.post.id === next.post.id &&
+    prev.post.createdAt === next.post.createdAt &&
+    prev.post.type === next.post.type &&
+    prev.post.lat === next.post.lat &&
+    prev.post.lng === next.post.lng &&
+    prev.filterMin === next.filterMin &&
+    prev.isDragging === next.isDragging &&
+    prev.isSelected === next.isSelected &&
+    prev.draggable === next.draggable &&
+    prev.verificationTier === next.verificationTier &&
+    prev.trustLevel === next.trustLevel
+  );
+});

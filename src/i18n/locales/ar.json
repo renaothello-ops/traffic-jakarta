@@ -451,7 +451,10 @@
     "locationDenied": "تم رفض إذن تحديد الموقع.",
     "locationDeniedLong": "تم رفض الوصول إلى الموقع.تمكين الموقع في إعدادات المتصفح.",
     "locationUnavailable": "الموقع غير متاح مؤقتا.",
-    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area.",
+    "nearby": "Nearby",
+    "post": "Post",
+    "messages": "Messages"
   },
   "maneuvers": {
     "depart": "اخرج",

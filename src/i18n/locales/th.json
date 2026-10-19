@@ -451,7 +451,10 @@
     "locationDenied": "การอนุญาตตำแหน่งถูกปฏิเสธ",
     "locationDeniedLong": "การเข้าถึงตำแหน่งถูกปฏิเสธเปิดใช้งานตำแหน่งในการตั้งค่าเบราว์เซอร์",
     "locationUnavailable": "ตำแหน่งไม่สามารถใช้งานได้ชั่วคราว",
-    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area.",
+    "nearby": "Nearby",
+    "post": "Post",
+    "messages": "Messages"
   },
   "maneuvers": {
     "depart": "มุ่งหน้าออกไป",

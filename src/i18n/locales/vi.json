@@ -451,7 +451,10 @@
     "locationDenied": "Location permission denied.",
     "locationDeniedLong": "Location access denied. Enable location in browser settings.",
     "locationUnavailable": "Location temporarily unavailable.",
-    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area.",
+    "nearby": "Nearby",
+    "post": "Post",
+    "messages": "Messages"
   },
   "maneuvers": {
     "depart": "Head out",

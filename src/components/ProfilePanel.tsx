@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Post } from "../types";
 import { isMinePost } from "../assets/lib/identity";
@@ -69,7 +69,7 @@ function todayRestriction(): "ganjil" | "genap" {
   return day % 2 === 0 ? "genap" : "ganjil";
 }
 
-export default function ProfilePanel({
+function ProfilePanel({
   posts,
   onOpenPost,
   unifiedNotifications,
@@ -162,7 +162,7 @@ export default function ProfilePanel({
   if (!effectiveProfile) {
     return (
       <>
-        <div className="tj-tab-panel">
+        <div className="tj-tab-panel__content">
           {profileInitialLoading ? (
             <p className="tj-profile-inline-status">{t("common.loading")}</p>
           ) : (
@@ -187,7 +187,7 @@ export default function ProfilePanel({
   };
 
   return (
-    <div className="tj-tab-panel">
+    <div className="tj-tab-panel__content">
       <header className="tj-tab-panel__header tj-profile-header">
         <div>
           <h1 className="tj-tab-panel__title">{t("profile.title")}</h1>
@@ -397,3 +397,5 @@ export default function ProfilePanel({
     </div>
   );
 }
+
+export default memo(ProfilePanel);

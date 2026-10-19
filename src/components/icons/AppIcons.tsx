@@ -186,6 +186,49 @@ export function IconMapPin(props: IconProps = defaults) {
   );
 }
 
+/** Bottom nav — folded map */
+export function IconNavMap(props: IconProps = defaults) {
+  return (
+    <Svg {...props}>
+      <path d="M8 6v12" />
+      <path d="M16 6v12" />
+      <path d="M8 6l8-2v12l-8 2V6z" />
+    </Svg>
+  );
+}
+
+/** Bottom nav — nearby / feed */
+export function IconNavNearby(props: IconProps = defaults) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </Svg>
+  );
+}
+
+/** Bottom nav — create post */
+export function IconNavPlus(props: IconProps = defaults) {
+  return (
+    <Svg {...props}>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </Svg>
+  );
+}
+
+/** Bottom nav — direct messages */
+export function IconNavSend(props: IconProps = defaults) {
+  return (
+    <Svg {...props}>
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </Svg>
+  );
+}
+
 export function IconTraffic(props: IconProps = defaults) {
   return (
     <Svg {...props}>

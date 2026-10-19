@@ -1,5 +1,12 @@
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
 import type { Feature, LineString } from "geojson";
 import { maplibregl } from "../assets/lib/maplibreSetup";
@@ -1110,8 +1117,9 @@ export default function MapScreen() {
     }
     setSubmitting(true);
     setComposerError(null);
-    const postLat = draftPos?.lat ?? center.lat;
-    const postLng = draftPos?.lng ?? center.lng;
+    const mapCenter = getMapCenterPoint();
+    const postLat = draftPos?.lat ?? mapCenter.lat;
+    const postLng = draftPos?.lng ?? mapCenter.lng;
     const isAnonymous = postAnonymous && postAudience === "public";
     try {
       const postId = await createPost({
@@ -1335,6 +1343,37 @@ export default function MapScreen() {
   const showMapChrome = activeTab === "map" && !isNavigating;
   const draftDraggable = openComposer && !locationConfirmed;
 
+  const onNavSelectTab = useCallback((tab: AppTab) => {
+    if (import.meta.env.DEV) {
+      performance.mark(`nav-tab-${tab}-start`);
+    }
+    startTransition(() => {
+      setActiveTab(tab);
+      if (import.meta.env.DEV) {
+        performance.mark(`nav-tab-${tab}-committed`);
+        try {
+          performance.measure(
+            `nav-tab-${tab}`,
+            `nav-tab-${tab}-start`,
+            `nav-tab-${tab}-committed`
+          );
+          const m = performance.getEntriesByName(`nav-tab-${tab}`).pop();
+          if (m) console.info("[perf] tab transition", tab, `${m.duration.toFixed(1)}ms`);
+        } catch {
+          /* marks may be missing if transition batching defers commit */
+        }
+      }
+    });
+  }, []);
+
+  const onNavPressMessages = useCallback(() => {
+    if (!user) {
+      void signIn();
+      return;
+    }
+    setMessagesOpen(true);
+  }, [user, signIn]);
+
   const roadLineGeoJson = useMemo(
     () => ({
       type: "Feature" as const,
@@ -1349,7 +1388,10 @@ export default function MapScreen() {
 
   return (
     <div className="tj-app">
-      <div className="tj-map-shell" aria-hidden={false}>
+      <div
+        className={`tj-map-shell${activeTab !== "map" ? " tj-map-shell--background" : ""}`}
+        aria-hidden={activeTab !== "map"}
+      >
       <Map
         ref={mapRef}
         mapLib={maplibregl as typeof maplibregl}
@@ -1366,10 +1408,6 @@ export default function MapScreen() {
           if (e.originalEvent) {
             userAdjustedViewRef.current = true;
           }
-        }}
-        onMove={(e) => {
-          setCenter({ lat: e.viewState.latitude, lng: e.viewState.longitude });
-          setZoom(e.viewState.zoom);
         }}
         onMoveEnd={(e) => {
           setCenter({ lat: e.viewState.latitude, lng: e.viewState.longitude });
@@ -1851,7 +1889,10 @@ export default function MapScreen() {
         />
       )}
 
-      {activeTab === "comment" && (
+      <div
+        className={`tj-tab-panel${activeTab !== "comment" ? " tj-tab-panel--hidden" : ""}`}
+        aria-hidden={activeTab !== "comment"}
+      >
         <CommentPanel
           posts={feedPosts}
           userLat={myPos?.lat ?? null}
@@ -1864,9 +1905,12 @@ export default function MapScreen() {
           onOpenMessages={() => setMessagesOpen(true)}
           messageUnreadCount={messageInbox.unreadMessageCount}
         />
-      )}
+      </div>
 
-      {activeTab === "profile" && (
+      <div
+        className={`tj-tab-panel${activeTab !== "profile" ? " tj-tab-panel--hidden" : ""}`}
+        aria-hidden={activeTab !== "profile"}
+      >
         <ProfilePanel
           posts={posts}
           onOpenPost={(p) => selectPost(p)}
@@ -1882,7 +1926,7 @@ export default function MapScreen() {
           onOpenProfile={(uid) => setPublicProfileUid(uid)}
           onOpenFavoritePlaces={() => setFavoritePlacesOpen(true)}
         />
-      )}
+      </div>
 
       {selectedPost &&
         !openComposer &&
@@ -1956,9 +2000,10 @@ export default function MapScreen() {
           onTextChange={setText}
           onImageChange={setImage}
           onConfirmLocation={() => setLocationConfirmed(true)}
-          onUseMapCenter={() =>
-            setDraftPos({ lat: center.lat, lng: center.lng })
-          }
+          onUseMapCenter={() => {
+            const p = getMapCenterPoint();
+            setDraftPos({ lat: p.lat, lng: p.lng });
+          }}
           onUseMyLocation={() => {
             if (myPos) setDraftPos({ lat: myPos.lat, lng: myPos.lng });
           }}
@@ -2129,7 +2174,17 @@ export default function MapScreen() {
         />
       )}
 
-      <BottomNav active={activeTab} onChange={setActiveTab} />
+      {!isNavigating ? (
+        <BottomNav
+          activeTab={activeTab}
+          composerOpen={openComposer}
+          messagesOpen={messagesOpen}
+          messageUnreadCount={messageInbox.unreadMessageCount}
+          onSelectTab={onNavSelectTab}
+          onPressPost={openNewComposer}
+          onPressMessages={onNavPressMessages}
+        />
+      ) : null}
 
       {firestoreErrorKey ? (
         <p className="tj-firestore-err" role="alert">

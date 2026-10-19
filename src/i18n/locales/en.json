@@ -431,6 +431,9 @@
   "nav": {
     "map": "Map",
     "community": "Community",
+    "nearby": "Nearby",
+    "post": "Post",
+    "messages": "Messages",
     "profile": "Profile",
     "arrived": "You've arrived",
     "recalculating": "Recalculating route…",

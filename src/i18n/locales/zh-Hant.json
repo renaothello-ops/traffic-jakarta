@@ -451,7 +451,10 @@
     "locationDenied": "位置權限被拒絕。",
     "locationDeniedLong": "位置存取被拒絕。在瀏覽器設定中啟用位置。",
     "locationUnavailable": "位置暫時無法使用。",
-    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area.",
+    "nearby": "Nearby",
+    "post": "Post",
+    "messages": "Messages"
   },
   "maneuvers": {
     "depart": "出發",

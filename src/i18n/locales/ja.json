@@ -22,7 +22,10 @@
     "locationTimeout": "位置情報の取得がタイムアウトしました。「再試行」をタップするか、開けた場所で再度お試しください。",
     "map": "地図",
     "community": "コミュニティ",
-    "profile": "プロフィール"
+    "profile": "プロフィール",
+    "nearby": "近く",
+    "post": "投稿",
+    "messages": "メッセージ"
   },
   "auth": {
     "signInGoogle": "Googleで続行",

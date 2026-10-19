@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { EnrichedPost } from "../assets/lib/trust";
 import { publicTrustLabelI18n } from "../assets/lib/trustI18n";
@@ -144,7 +144,7 @@ function ReportCard({
   );
 }
 
-export default function CommentPanel({
+function CommentPanel({
   posts,
   userLat,
   userLng,
@@ -179,7 +179,7 @@ export default function CommentPanel({
   const recent = [...feedPosts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 40);
 
   return (
-    <div className="tj-tab-panel">
+    <div className="tj-tab-panel__content">
       <header className="tj-tab-panel__header tj-community-header">
         <div>
           <h1 className="tj-tab-panel__title">{t("nav.community")}</h1>
@@ -268,3 +268,5 @@ export default function CommentPanel({
     </div>
   );
 }
+
+export default memo(CommentPanel);

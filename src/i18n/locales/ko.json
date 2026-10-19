@@ -451,7 +451,10 @@
     "locationDenied": "위치 권한이 거부되었습니다.",
     "locationDeniedLong": "위치 접근이 거부되었습니다.브라우저 설정에서 위치를 활성화하세요.",
     "locationUnavailable": "일시적으로 위치를 사용할 수 없습니다.",
-    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area.",
+    "nearby": "Nearby",
+    "post": "Post",
+    "messages": "Messages"
   },
   "maneuvers": {
     "depart": "밖으로 나가세요",
