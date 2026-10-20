@@ -1128,7 +1128,8 @@ textarea {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 40;
+  z-index: 50;
+  pointer-events: auto;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   align-items: stretch;
@@ -1215,6 +1216,25 @@ textarea {
 
 .tj-map-shell--background {
   pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.tj-app--overlay-tab .tj-map-shell--background {
+  /* Keep map mounted but off-screen for tab keep-alive; avoids GPU layer over tabs. */
+  z-index: 0;
+}
+
+.tj-tab-scaffold {
+  position: absolute;
+  inset: 0;
+  bottom: var(--tj-bottom-nav-height);
+  z-index: 38;
+  pointer-events: none;
+}
+
+.tj-app--overlay-tab .tj-tab-scaffold {
+  pointer-events: auto;
 }
 
 .tj-tab-panel--hidden {
@@ -1877,15 +1897,13 @@ textarea {
 
 .tj-tab-panel {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: var(--tj-bottom-nav-height);
-  z-index: 12;
-  background: #fafafa;
+  inset: 0;
+  z-index: 1;
+  background: var(--tj-ig-bg, #fafafa);
   overflow: auto;
   padding: 14px 14px 24px;
   -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
 }
 
 .tj-profile-inline-status {

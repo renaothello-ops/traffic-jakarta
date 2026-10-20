@@ -1,6 +1,5 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -1350,26 +1349,8 @@ export default function MapScreen() {
   const draftDraggable = openComposer && !locationConfirmed;
 
   const onNavSelectTab = useCallback((tab: AppTab) => {
-    if (import.meta.env.DEV) {
-      performance.mark(`nav-tab-${tab}-start`);
-    }
-    startTransition(() => {
-      setActiveTab(tab);
-      if (import.meta.env.DEV) {
-        performance.mark(`nav-tab-${tab}-committed`);
-        try {
-          performance.measure(
-            `nav-tab-${tab}`,
-            `nav-tab-${tab}-start`,
-            `nav-tab-${tab}-committed`
-          );
-          const m = performance.getEntriesByName(`nav-tab-${tab}`).pop();
-          if (m) console.info("[perf] tab transition", tab, `${m.duration.toFixed(1)}ms`);
-        } catch {
-          /* marks may be missing if transition batching defers commit */
-        }
-      }
-    });
+    setMessagesOpen(false);
+    setActiveTab(tab);
   }, []);
 
   const onNavPressMessages = useCallback(() => {
@@ -1393,7 +1374,7 @@ export default function MapScreen() {
   );
 
   return (
-    <div className="tj-app">
+    <div className={`tj-app${activeTab !== "map" ? " tj-app--overlay-tab" : ""}`}>
       <div
         className={`tj-map-shell${activeTab !== "map" ? " tj-map-shell--background" : ""}`}
         aria-hidden={activeTab !== "map"}
@@ -1881,6 +1862,7 @@ export default function MapScreen() {
         />
       )}
 
+      <div className="tj-tab-scaffold" aria-hidden={activeTab === "map"}>
       <div
         className={`tj-tab-panel${activeTab !== "comment" ? " tj-tab-panel--hidden" : ""}`}
         aria-hidden={activeTab !== "comment"}
@@ -1916,6 +1898,7 @@ export default function MapScreen() {
           onOpenProfile={(uid) => setPublicProfileUid(uid)}
           onOpenFavoritePlaces={() => setFavoritePlacesOpen(true)}
         />
+      </div>
       </div>
 
       {selectedPost &&

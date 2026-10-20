@@ -94,6 +94,8 @@ body > .tj-seo-wrap {
 
 .tj-seo-landing--hidden {
   display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }
 
 #root.tj-app-root--beneath {

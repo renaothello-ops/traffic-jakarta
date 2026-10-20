@@ -17,10 +17,10 @@ window.addEventListener('unhandledrejection', (event) => {
 const root = document.getElementById('root')!
 const LANDING_KEY = 'tj_map_open'
 
-function initSeoLanding() {
+function initSeoLanding(): (() => void) | undefined {
   const landing = document.getElementById('tj-seo-landing')
   const openBtn = document.getElementById('tj-open-map-btn')
-  if (!landing) return
+  if (!landing) return undefined
 
   const openMap = () => {
     try {
@@ -41,13 +41,16 @@ function initSeoLanding() {
 
   if (skip) {
     landing.classList.add('tj-seo-landing--hidden')
+    root.classList.remove('tj-app-root--beneath')
   } else {
     root.classList.add('tj-app-root--beneath')
     openBtn?.addEventListener('click', openMap)
   }
+
+  return openMap
 }
 
-initSeoLanding()
+const dismissSeoLanding = initSeoLanding()
 
 void initI18n().then(() => {
   ReactDOM.createRoot(root).render(
@@ -55,4 +58,6 @@ void initI18n().then(() => {
       <App />
     </React.StrictMode>,
   )
+  // JS app is the product surface; static SEO block stays in HTML for crawlers.
+  dismissSeoLanding?.()
 })
