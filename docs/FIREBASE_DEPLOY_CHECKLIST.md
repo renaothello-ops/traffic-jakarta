@@ -36,6 +36,18 @@ Combined (same effect):
 firebase deploy --only firestore,storage --project "$PROJECT_ID"
 ```
 
+## Vercel Preview / production (API keys — server-side only)
+
+In Vercel → Project → Settings → Environment Variables (Preview + Production):
+
+| Variable | Required for |
+|----------|----------------|
+| `TOMTOM_API_KEY` | Map traffic layer, routing |
+| `GOOGLE_PLACES_API_KEY` | Place search (`/api/places`; without it clients see “search not configured”) |
+| All `VITE_FIREBASE_*` | Google login + Firestore (from Firebase Console) |
+
+Redeploy Preview after changing env vars.
+
 ## After deploy
 
 1. Firebase Console → Firestore → Indexes: wait until **Enabled** (not Building).
