@@ -778,6 +778,21 @@ describe("Firestore security rules", () => {
     });
   });
 
+  it("U8 — user cannot create profile with username without reservation", async () => {
+    await withClearDb(async () => {
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        setDoc(doc(alice.firestore(), "users/alice"), {
+          displayName: "Alice",
+          username: "no_reservation",
+          usernameLower: "no_reservation",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
   it("U7 — username on profile must match owned reservation", async () => {
     await withClearDb(async () => {
       await testEnv.withSecurityRulesDisabled(async (ctx) => {

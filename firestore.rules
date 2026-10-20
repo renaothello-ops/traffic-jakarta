@@ -330,19 +330,7 @@ service cloud.firestore {
           || data.updatedAt is number);
     }
 
-    function validUserWrite() {
-      return validUserWriteKeys() && validUserFieldValues(request.resource.data);
-    }
-
-    // Patch updates (e.g. language only) — legacy extra fields on the doc may remain.
-    // Username on users/{uid} must match a reservation in usernames/{lower} owned by this user.
-    function usernameReservationMatchesProfile() {
-      let changed = request.resource.data.diff(resource.data).affectedKeys();
-      if (!changed.hasAny(['username', 'usernameLower'])) {
-        return true;
-      }
-      let lower = request.resource.data.get('usernameLower', null);
-      let name = request.resource.data.get('username', null);
+    function profileUsernameMatchesReservation(lower, name) {
       return lower is string
         && name is string
         && lower == name
@@ -350,6 +338,26 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/usernames/$(lower))
         && get(/databases/$(database)/documents/usernames/$(lower)).data.uid
             == request.auth.uid;
+    }
+
+    function validUserWrite() {
+      let data = request.resource.data;
+      let lower = data.get('usernameLower', null);
+      let name = data.get('username', null);
+      return validUserWriteKeys()
+        && validUserFieldValues(data)
+        && (!data.keys().hasAny(['username', 'usernameLower'])
+          || profileUsernameMatchesReservation(lower, name));
+    }
+
+    // Patch updates (e.g. language only) — legacy extra fields on the doc may remain.
+    // Username on users/{uid} must match a reservation in usernames/{lower} owned by this user.
+    function usernameReservationMatchesProfile() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let lower = request.resource.data.get('usernameLower', null);
+      let name = request.resource.data.get('username', null);
+      return !changed.hasAny(['username', 'usernameLower'])
+        || profileUsernameMatchesReservation(lower, name);
     }
 
     function validUserUpdate() {
