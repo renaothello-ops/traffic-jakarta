@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { describe, it, before, after } from "node:test";
 import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import { initRulesTestEnvironment } from "./emulatorTestEnv.mjs";
@@ -674,6 +675,130 @@ describe("Firestore security rules", () => {
       await assertFails(getDoc(doc(bob.firestore(), "users/alice")));
       const alice = testEnv.authenticatedContext("alice");
       await assertSucceeds(getDoc(doc(alice.firestore(), "users/alice")));
+    });
+  });
+
+  it("U1 — user can claim an available username handle", async () => {
+    await withClearDb(async () => {
+      const alice = testEnv.authenticatedContext("alice");
+      await assertSucceeds(
+        setDoc(doc(alice.firestore(), "usernames/rena_jkt"), {
+          uid: "alice",
+          createdAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("U2 — user cannot claim a username handle owned by someone else", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "usernames/taken_name"), {
+          uid: "alice",
+          createdAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertFails(
+        setDoc(doc(bob.firestore(), "usernames/taken_name"), {
+          uid: "bob",
+          createdAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("U3 — invalid username handle document id is rejected", async () => {
+    await withClearDb(async () => {
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        setDoc(doc(alice.firestore(), "usernames/AB"), {
+          uid: "alice",
+          createdAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("U4 — only one user can create the same username handle (race)", async () => {
+    await withClearDb(async () => {
+      const alice = testEnv.authenticatedContext("alice");
+      const bob = testEnv.authenticatedContext("bob");
+      const results = await Promise.allSettled([
+        setDoc(doc(alice.firestore(), "usernames/race_handle"), {
+          uid: "alice",
+          createdAt: Date.now(),
+        }),
+        setDoc(doc(bob.firestore(), "usernames/race_handle"), {
+          uid: "bob",
+          createdAt: Date.now(),
+        }),
+      ]);
+      const fulfilled = results.filter((r) => r.status === "fulfilled");
+      assert.equal(fulfilled.length, 1);
+    });
+  });
+
+  it("U5 — user cannot set username on profile without usernames reservation", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/alice"), {
+          displayName: "Alice",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertFails(
+        updateDoc(doc(alice.firestore(), "users/alice"), {
+          username: "stolen_name",
+          usernameLower: "stolen_name",
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("U6 — user cannot update another user's private profile", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/alice"), {
+          displayName: "Alice",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+      const bob = testEnv.authenticatedContext("bob");
+      await assertFails(
+        updateDoc(doc(bob.firestore(), "users/alice"), {
+          displayName: "Hacked",
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
+  it("U7 — username on profile must match owned reservation", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/alice"), {
+          displayName: "Alice",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        await setDoc(doc(ctx.firestore(), "usernames/alice_ok"), {
+          uid: "alice",
+          createdAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertSucceeds(
+        updateDoc(doc(alice.firestore(), "users/alice"), {
+          username: "alice_ok",
+          usernameLower: "alice_ok",
+          updatedAt: Date.now(),
+        })
+      );
     });
   });
 });

@@ -1263,10 +1263,11 @@ textarea {
 .tj-sheet-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 45;
+  z-index: 55;
   background: rgba(15, 23, 42, 0.35);
   display: flex;
   align-items: flex-end;
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 .tj-sheet-backdrop--map-visible {
@@ -1306,9 +1307,14 @@ textarea {
   width: 100%;
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
-  padding: 12px 16px 20px;
-  max-height: 85vh;
+  padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top, 0px) - 8px));
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tj-app--sheet-open .tj-bottom-nav {
+  display: none;
 }
 
 .tj-sheet__handle {
@@ -3334,4 +3340,135 @@ body.tj-rtl .tj-language-option__check {
 .tj-composer-sheet .tj-btn--primary {
   min-height: var(--tj-ig-touch);
   font-weight: 600;
+}
+
+.tj-welcome,
+.tj-onboarding {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  background: var(--tj-ig-bg, #fafafa);
+}
+
+.tj-welcome__inner,
+.tj-onboarding__inner {
+  width: 100%;
+  max-width: 420px;
+}
+
+.tj-welcome__hero {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--tj-ig-accent, #0095f6);
+}
+
+.tj-welcome__title,
+.tj-onboarding__title {
+  margin: 0 0 8px;
+  font: var(--tj-ig-font-title, 600 1.25rem/1.3 system-ui, sans-serif);
+  text-align: center;
+}
+
+.tj-welcome__subtitle {
+  margin: 0 0 20px;
+  text-align: center;
+  color: var(--tj-ig-text-muted, #8e8e8e);
+}
+
+.tj-welcome__cta,
+.tj-onboarding__next {
+  width: 100%;
+  min-height: var(--tj-ig-touch, 44px);
+  margin-top: 8px;
+}
+
+.tj-welcome__legal {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.tj-welcome__lang {
+  margin: 16px auto 0;
+  display: flex;
+}
+
+.tj-welcome--loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.tj-onboarding__step {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tj-ig-text-muted, #8e8e8e);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tj-onboarding__avatar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.tj-onboarding__username-ok {
+  display: block;
+  color: #059669;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tj-onboarding__draft-banner {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: var(--tj-ig-radius-sm, 8px);
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  font-size: 13px;
+}
+
+.tj-onboarding__legal-links {
+  margin: 12px 0;
+  padding-left: 1.2rem;
+}
+
+.tj-onboarding__check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+.tj-onboarding__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.tj-onboarding__actions .tj-btn--primary {
+  flex: 1;
+}
+
+.tj-messages-empty--rich {
+  text-align: center;
+  padding: 32px 12px 24px;
+}
+
+.tj-messages-empty__icon {
+  color: var(--tj-ig-text-muted, #8e8e8e);
+  margin-bottom: 12px;
+}
+
+.tj-messages-empty__cta {
+  margin-top: 16px;
+  min-height: var(--tj-ig-touch, 44px);
+  padding-left: 24px;
+  padding-right: 24px;
 }

@@ -203,7 +203,9 @@
     "reportSubmitted": "Report submitted. Moderation review is not available in the app yet.",
     "locationShareTitle": "Share map location",
     "locationShareConfirm": "Send this map point?",
-    "routeShareTitle": "Share route summary"
+    "routeShareTitle": "Share route summary",
+    "emptyInboxFollowHint": "Find people to follow and start a conversation about traffic in Jakarta.",
+    "findUsers": "Find users"
   },
   "traffic": {
     "smartTraffic": "Smart Traffic",
@@ -227,7 +229,8 @@
     "saving": "Saving…",
     "anonymous": "Anonymous",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "continue": "Continue"
   },
   "map": {
     "filterAria": "Show reports from",
@@ -656,6 +659,34 @@
       "school": "School",
       "work": "Work",
       "other": "Other"
+    }
+  },
+  "welcome": {
+    "title": "Welcome to Traffic Jakarta",
+    "subtitle": "Live Jakarta traffic map, community reports, and messages. Sign in to get started.",
+    "signInHint": "By continuing, you will sign in with Google. Profile setup comes next."
+  },
+  "onboarding": {
+    "stepProfile": "Step 1 of 2",
+    "stepLegal": "Step 2 of 2",
+    "profileTitle": "Set up your profile",
+    "profileHint": "Choose how others see you on reports and messages.",
+    "legalTitle": "Policies",
+    "legalHint": "Review our policies before using the app.",
+    "legalDraftNotice": "Terms and privacy pages are still marked as draft for owner review. We record that you read them, not a final legal agreement.",
+    "viewTerms": "Terms of Service (draft)",
+    "viewPrivacy": "Privacy Policy (draft)",
+    "acknowledgeDraftPolicies": "I have read the draft Terms and Privacy pages",
+    "agreeTermsPublished": "I agree to the Terms of Service (version {{version}})",
+    "finish": "Start using Traffic Jakarta",
+    "usernameAvailable": "Username is available",
+    "usernameChecking": "Checking availability…",
+    "errors": {
+      "displayNameRequired": "Display name is required",
+      "usernameRequired": "Username is required",
+      "usernameUnavailable": "Choose a different username",
+      "usernameChecking": "Wait for username check to finish",
+      "rulesNotDeployed": "Profile setup is blocked by server permissions. Firestore Security Rules in the repo must be deployed to Firebase before new sign-ups can finish. Your operator has not deployed them yet — try again after deployment."
     }
   }
 }

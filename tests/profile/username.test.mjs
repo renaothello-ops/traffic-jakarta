@@ -9,7 +9,9 @@ function validateUsername(raw) {
   const normalized = normalizeUsernameInput(raw);
   if (normalized.length < 3) return { ok: false, errorKey: "tooShort" };
   if (normalized.length > 20) return { ok: false, errorKey: "tooLong" };
-  if (!/^[a-z0-9_]{3,20}$/.test(normalized)) return { ok: false, errorKey: "invalid" };
+  if (!/^[a-z0-9](?:[a-z0-9._]{1,18}[a-z0-9])?$/.test(normalized)) {
+    return { ok: false, errorKey: "invalid" };
+  }
   return { ok: true, normalized };
 }
 

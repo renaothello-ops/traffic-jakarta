@@ -1,4 +1,32 @@
 {
+  "welcome": {
+    "title": "Welcome to Traffic Jakarta",
+    "subtitle": "Live Jakarta traffic map, community reports, and messages. Sign in to get started.",
+    "signInHint": "By continuing, you will sign in with Google. Profile setup comes next."
+  },
+  "onboarding": {
+    "stepProfile": "Step 1 of 2",
+    "stepLegal": "Step 2 of 2",
+    "profileTitle": "Set up your profile",
+    "profileHint": "Choose how others see you on reports and messages.",
+    "legalTitle": "Policies",
+    "legalHint": "Review our policies before using the app.",
+    "legalDraftNotice": "Terms and privacy pages are still marked as draft for owner review. We record that you read them, not a final legal agreement.",
+    "viewTerms": "Terms of Service (draft)",
+    "viewPrivacy": "Privacy Policy (draft)",
+    "acknowledgeDraftPolicies": "I have read the draft Terms and Privacy pages",
+    "agreeTermsPublished": "I agree to the Terms of Service (version {{version}})",
+    "finish": "Start using Traffic Jakarta",
+    "usernameAvailable": "Username is available",
+    "usernameChecking": "Checking availability…",
+    "errors": {
+      "displayNameRequired": "Display name is required",
+      "usernameRequired": "Username is required",
+      "usernameUnavailable": "Choose a different username",
+      "usernameChecking": "Wait for username check to finish",
+      "rulesNotDeployed": "Profile setup is blocked by server permissions. Firestore Security Rules in the repo must be deployed to Firebase before new sign-ups can finish. Your operator has not deployed them yet — try again after deployment."
+    }
+  },
   "auth": {
     "signInGoogle": "Continue with Google",
     "signInTitle": "Sign in",
@@ -14,7 +42,7 @@
     "editProfile": "Edit profile",
     "displayName": "Display name",
     "username": "Username",
-    "usernameHint": "Letters, numbers, underscore · 3–20 chars",
+    "usernameHint": "Lowercase letters, numbers, underscore, period · 3–20 chars · must start and end with a letter or number",
     "suggestUsername": "Suggest",
     "googleEmail": "Google account email",
     "uidHidden": "Account ID is private",
@@ -49,7 +77,7 @@
       "taken": "Username is already taken",
       "tooShort": "Username must be at least 3 characters",
       "tooLong": "Username must be at most 20 characters",
-      "invalidChars": "Only letters, numbers and underscores are allowed",
+      "invalidChars": "Use lowercase letters, numbers, underscores, or periods (not at the start or end)",
       "permission": "Could not save username. Please try again."
     }
   },
@@ -171,8 +199,10 @@
     "openAria": "Open messages",
     "inbox": "Inbox",
     "requests": "Message requests",
-    "emptyInbox": "No messages yet.",
+    "emptyInbox": "No messages yet",
     "emptyInboxHint": "You can message someone from their profile or from a traffic report.",
+    "emptyInboxFollowHint": "Find people to follow and start a conversation about traffic in Jakarta.",
+    "findUsers": "Find users",
     "search": "Search conversations",
     "searchPlaceholder": "Search by name or message",
     "searchNoResults": "No conversations match your search.",
@@ -215,6 +245,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "back": "Back",
+    "continue": "Continue",
     "close": "Close",
     "loading": "Loading…",
     "error": "Something went wrong",
@@ -257,7 +288,7 @@
   },
   "errors": {
     "searchUnavailable": "Search temporarily unavailable",
-    "searchPlacesNotConfigured": "Place search is not available on this preview. Try again later.",
+    "searchPlacesNotConfigured": "Place search is not configured on this server. Ask the operator to set GOOGLE_PLACES_API_KEY in Vercel (or .env.local for dev) and restrict the key to Places API (New).",
     "searchRateLimited": "Too many search requests. Please wait a moment.",
     "searchNetwork": "Could not reach search. Check your connection and try again.",
     "locationPrivacyOff": "Location is disabled in Privacy settings.",

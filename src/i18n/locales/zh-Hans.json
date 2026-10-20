@@ -203,7 +203,9 @@
     "reportSubmitted": "报告已提交。该应用程序尚不支持审核审核。",
     "locationShareTitle": "分享地图位置",
     "locationShareConfirm": "发送这个地图点？",
-    "routeShareTitle": "分享路线总结"
+    "routeShareTitle": "分享路线总结",
+    "emptyInboxFollowHint": "Find people to follow and start a conversation about traffic in Jakarta.",
+    "findUsers": "Find users"
   },
   "traffic": {
     "smartTraffic": "智慧交通",
@@ -227,7 +229,8 @@
     "saving": "保存…",
     "anonymous": "匿名的",
     "yes": "是的",
-    "no": "不"
+    "no": "不",
+    "continue": "Continue"
   },
   "map": {
     "filterAria": "显示报告来自",
@@ -656,6 +659,34 @@
       "school": "学校",
       "work": "工作",
       "other": "其他"
+    }
+  },
+  "welcome": {
+    "title": "Welcome to Traffic Jakarta",
+    "subtitle": "Live Jakarta traffic map, community reports, and messages. Sign in to get started.",
+    "signInHint": "By continuing, you will sign in with Google. Profile setup comes next."
+  },
+  "onboarding": {
+    "stepProfile": "Step 1 of 2",
+    "stepLegal": "Step 2 of 2",
+    "profileTitle": "Set up your profile",
+    "profileHint": "Choose how others see you on reports and messages.",
+    "legalTitle": "Policies",
+    "legalHint": "Review our policies before using the app.",
+    "legalDraftNotice": "Terms and privacy pages are still marked as draft for owner review. We record that you read them, not a final legal agreement.",
+    "viewTerms": "Terms of Service (draft)",
+    "viewPrivacy": "Privacy Policy (draft)",
+    "acknowledgeDraftPolicies": "I have read the draft Terms and Privacy pages",
+    "agreeTermsPublished": "I agree to the Terms of Service (version {{version}})",
+    "finish": "Start using Traffic Jakarta",
+    "usernameAvailable": "Username is available",
+    "usernameChecking": "Checking availability…",
+    "errors": {
+      "displayNameRequired": "Display name is required",
+      "usernameRequired": "Username is required",
+      "usernameUnavailable": "Choose a different username",
+      "usernameChecking": "Wait for username check to finish",
+      "rulesNotDeployed": "Profile setup is blocked by server permissions. Firestore Security Rules in the repo must be deployed to Firebase before new sign-ups can finish. Your operator has not deployed them yet — try again after deployment."
     }
   }
 }

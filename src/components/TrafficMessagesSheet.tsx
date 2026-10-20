@@ -16,10 +16,11 @@ import { useAuth } from "../contexts/useAuth";
 import { timeAgo } from "../assets/lib/timeAgo";
 import { useMountedRef } from "../hooks/useMountedRef";
 import UserAvatar from "./UserAvatar";
-import { IconX } from "./icons/AppIcons";
+import { IconMessagesEmpty, IconX } from "./icons/AppIcons";
 
 type Props = {
   onClose: () => void;
+  onOpenUserSearch?: () => void;
   onOpenChat: (thread: TrafficThreadSummary) => void;
   inbox: TrafficThreadSummary[];
   requests: TrafficThreadSummary[];
@@ -184,6 +185,7 @@ function RequestRow({
 
 export default function TrafficMessagesSheet({
   onClose,
+  onOpenUserSearch,
   onOpenChat,
   inbox,
   requests,
@@ -266,9 +268,19 @@ export default function TrafficMessagesSheet({
             ) : null}
 
             {!loadFailed && inbox.length === 0 ? (
-              <div className="tj-messages-empty">
+              <div className="tj-messages-empty tj-messages-empty--rich">
+                <IconMessagesEmpty size={72} className="tj-messages-empty__icon" />
                 <p className="tj-messages-empty__title">{t("messages.emptyInbox")}</p>
-                <p className="tj-hint">{t("messages.emptyInboxHint")}</p>
+                <p className="tj-hint">{t("messages.emptyInboxFollowHint")}</p>
+                {onOpenUserSearch ? (
+                  <button
+                    type="button"
+                    className="tj-btn tj-btn--primary tj-messages-empty__cta"
+                    onClick={onOpenUserSearch}
+                  >
+                    {t("messages.findUsers")}
+                  </button>
+                ) : null}
               </div>
             ) : null}
 

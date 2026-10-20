@@ -128,6 +128,11 @@ export type UserProfile = {
   notificationSettings: NotificationSettings;
   privacySettings: PrivacySettings;
   bio?: string;
+  /** Set when onboarding (username + display name + policy step) completes. */
+  onboardingCompletedAt?: number | null;
+  termsAcceptedAt?: number | null;
+  termsAcceptedVersion?: string | null;
+  privacyNoticeAcknowledgedAt?: number | null;
   createdAt: number;
   updatedAt: number;
 };

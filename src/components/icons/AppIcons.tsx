@@ -247,6 +247,16 @@ export function IconNavSend(props: IconProps = defaults) {
   );
 }
 
+export function IconMessagesEmpty(props: IconProps = defaults) {
+  return (
+    <Svg {...props}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <path d="M8 10h8" />
+      <path d="M8 14h5" />
+    </Svg>
+  );
+}
+
 export function IconTraffic(props: IconProps = defaults) {
   return (
     <Svg {...props}>

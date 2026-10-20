@@ -1361,6 +1361,19 @@ export default function MapScreen() {
     setMessagesOpen(true);
   }, [user, signIn]);
 
+  const overlaySheetOpen =
+    openComposer ||
+    messagesOpen ||
+    activeChat != null ||
+    notificationCenterOpen ||
+    userSearchOpen ||
+    favoritePlacesOpen ||
+    publicProfileUid != null ||
+    roadComposerOpen ||
+    editing != null ||
+    trafficDetailOpen ||
+    (selectedPost != null && !openComposer);
+
   const roadLineGeoJson = useMemo(
     () => ({
       type: "Feature" as const,
@@ -1374,7 +1387,9 @@ export default function MapScreen() {
   );
 
   return (
-    <div className={`tj-app${activeTab !== "map" ? " tj-app--overlay-tab" : ""}`}>
+    <div
+      className={`tj-app${activeTab !== "map" ? " tj-app--overlay-tab" : ""}${overlaySheetOpen ? " tj-app--sheet-open" : ""}`}
+    >
       <div
         className={`tj-map-shell${activeTab !== "map" ? " tj-map-shell--background" : ""}`}
         aria-hidden={activeTab !== "map"}
@@ -2022,6 +2037,10 @@ export default function MapScreen() {
           loadFailed={messageInbox.loadFailed}
           lastError={messageInbox.lastError}
           onClose={() => setMessagesOpen(false)}
+          onOpenUserSearch={() => {
+            setMessagesOpen(false);
+            setUserSearchOpen(true);
+          }}
           onOpenChat={(thread) => {
             setMessagesOpen(false);
             setActiveChat(thread);
@@ -2147,7 +2166,7 @@ export default function MapScreen() {
         />
       )}
 
-      {!isNavigating ? (
+      {!isNavigating && !overlaySheetOpen ? (
         <BottomNav
           activeTab={activeTab}
           composerOpen={openComposer}

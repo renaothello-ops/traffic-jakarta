@@ -156,10 +156,57 @@ export async function updateUserProfileFields(
   }
 }
 
+export async function checkUsernameAvailability(
+  lower: string,
+  currentUid: string
+): Promise<"available" | "taken" | "invalid"> {
+  const validated = validateUsername(lower);
+  if (!validated.ok) return "invalid";
+  const snap = await getDoc(usernameRef(validated.normalized));
+  if (!snap.exists()) return "available";
+  if (snap.data()?.uid === currentUid) return "available";
+  return "taken";
+}
+
+export type CompleteOnboardingInput = {
+  displayName: string;
+  username: string;
+  previousUsernameLower: string | null;
+  termsAcceptedVersion: string | null;
+  privacyNoticeAcknowledgedAt: number | null;
+};
+
+export async function completeOnboardingProfile(
+  uid: string,
+  input: CompleteOnboardingInput
+): Promise<void> {
+  const displayName = input.displayName.trim().slice(0, 120);
+  if (!displayName) {
+    throw new Error("onboarding.errors.displayNameRequired");
+  }
+  await updateUserProfileFields(uid, { displayName });
+
+  const now = Date.now();
+  const completionPatch: Record<string, unknown> = {
+    onboardingCompletedAt: now,
+    updatedAt: now,
+  };
+  if (input.termsAcceptedVersion) {
+    completionPatch.termsAcceptedVersion = input.termsAcceptedVersion;
+    completionPatch.termsAcceptedAt = now;
+  }
+  if (input.privacyNoticeAcknowledgedAt) {
+    completionPatch.privacyNoticeAcknowledgedAt = input.privacyNoticeAcknowledgedAt;
+  }
+
+  await claimUsername(uid, input.username, input.previousUsernameLower, completionPatch);
+}
+
 export async function claimUsername(
   uid: string,
   rawUsername: string,
-  previousUsernameLower: string | null
+  previousUsernameLower: string | null,
+  userCompletionPatch?: Record<string, unknown>
 ): Promise<void> {
   if (auth.currentUser?.uid !== uid) {
     throw new Error("Not authorized");
@@ -169,34 +216,38 @@ export async function claimUsername(
     throw new Error(validated.errorKey);
   }
   const lower = validated.normalized;
-  if (previousUsernameLower === lower) return;
+  const sameHandle = previousUsernameLower === lower;
+  if (sameHandle && !userCompletionPatch) return;
 
   try {
     await runTransaction(db, async (tx) => {
-      const nameSnap = await tx.get(usernameRef(lower));
-      if (nameSnap.exists() && nameSnap.data()?.uid !== uid) {
-        throw new Error("profile.username.errors.taken");
+      if (!sameHandle) {
+        const nameSnap = await tx.get(usernameRef(lower));
+        if (nameSnap.exists() && nameSnap.data()?.uid !== uid) {
+          throw new Error("profile.username.errors.taken");
+        }
       }
       const userSnap = await tx.get(userRef(uid));
       const prev =
         (userSnap.data()?.usernameLower as string | undefined) ?? null;
 
-      tx.set(usernameRef(lower), {
-        uid,
-        createdAt: Date.now(),
-      });
+      if (!sameHandle) {
+        tx.set(usernameRef(lower), {
+          uid,
+          createdAt: Date.now(),
+        });
+      }
 
-      tx.set(
-        userRef(uid),
-        {
-          username: lower,
-          usernameLower: lower,
-          updatedAt: Date.now(),
-        },
-        { merge: true }
-      );
+      const userMerge: Record<string, unknown> = {
+        username: lower,
+        usernameLower: lower,
+        updatedAt: Date.now(),
+        ...(userCompletionPatch ?? {}),
+      };
 
-      if (prev && prev !== lower) {
+      tx.set(userRef(uid), userMerge, { merge: true });
+
+      if (!sameHandle && prev && prev !== lower) {
         const prevRef = usernameRef(prev);
         const prevSnap = await tx.get(prevRef);
         if (prevSnap.exists() && prevSnap.data()?.uid === uid) {

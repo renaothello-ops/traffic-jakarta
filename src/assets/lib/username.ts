@@ -2,7 +2,7 @@ export type UsernameValidationResult =
   | { ok: true; normalized: string }
   | { ok: false; errorKey: string };
 
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+const USERNAME_RE = /^[a-z0-9](?:[a-z0-9._]{1,18}[a-z0-9])?$/;
 
 export function normalizeUsernameInput(raw: string): string {
   return raw.trim().replace(/^@+/, "").toLowerCase();

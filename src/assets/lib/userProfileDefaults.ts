@@ -125,6 +125,20 @@ export function mergeUserProfileFromFirestore(
     notificationSettings,
     privacySettings,
     bio: typeof data?.bio === "string" ? data.bio.slice(0, 280) : undefined,
+    onboardingCompletedAt:
+      typeof data?.onboardingCompletedAt === "number"
+        ? data.onboardingCompletedAt
+        : null,
+    termsAcceptedAt:
+      typeof data?.termsAcceptedAt === "number" ? data.termsAcceptedAt : null,
+    termsAcceptedVersion:
+      typeof data?.termsAcceptedVersion === "string"
+        ? data.termsAcceptedVersion
+        : null,
+    privacyNoticeAcknowledgedAt:
+      typeof data?.privacyNoticeAcknowledgedAt === "number"
+        ? data.privacyNoticeAcknowledgedAt
+        : null,
     createdAt: typeof data?.createdAt === "number" ? data.createdAt : now,
     updatedAt: typeof data?.updatedAt === "number" ? data.updatedAt : now,
   };

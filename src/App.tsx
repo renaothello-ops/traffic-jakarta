@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { withTranslation, type WithTranslation } from "react-i18next";
 import { AuthProvider } from "./contexts/AuthContext";
 import { UserProfileProvider } from "./contexts/UserProfileContext";
-import MapScreen from "./screens/MapScreen";
+import AppShell from "./components/AppShell";
 import LanguageDocumentSync from "./components/LanguageDocumentSync";
 import "./i18n";
 
@@ -67,7 +67,7 @@ export default function App() {
       <AuthProvider>
         <UserProfileProvider>
           <LanguageDocumentSync />
-          <MapScreen />
+          <AppShell />
         </UserProfileProvider>
       </AuthProvider>
     </AppErrorBoundary>

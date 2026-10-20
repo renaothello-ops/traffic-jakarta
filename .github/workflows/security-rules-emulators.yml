@@ -4,7 +4,7 @@ name: Security rules (emulators)
 on:
   workflow_dispatch:
   push:
-    branches: [main, master]
+    branches: [main, master, release/traffic-jakarta-public-prep]
     paths:
       - ".github/workflows/security-rules-emulators.yml"
       - "firebase.json"
@@ -55,7 +55,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Firestore security rules (33 tests)
+      - name: Firestore security rules (42 tests)
         env:
           CI: "true"
         run: npm run test:rules:ci
