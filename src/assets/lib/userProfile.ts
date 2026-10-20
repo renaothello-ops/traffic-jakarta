@@ -184,10 +184,10 @@ export async function completeOnboardingProfile(
   if (!displayName) {
     throw new Error("onboarding.errors.displayNameRequired");
   }
-  await updateUserProfileFields(uid, { displayName });
 
   const now = Date.now();
   const completionPatch: Record<string, unknown> = {
+    displayName,
     onboardingCompletedAt: now,
     updatedAt: now,
   };

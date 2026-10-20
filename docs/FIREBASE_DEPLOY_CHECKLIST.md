@@ -8,6 +8,17 @@ Do **not** run until `.env` / `VITE_FIREBASE_PROJECT_ID` matches your Firebase p
 - There is **no** `.firebaserc` in repo; CLI uses `--project` flag.
 - Local dev uses **production Firestore** unless you add `connectFirestoreEmulator` (not enabled in app code today).
 
+## Compare deployed rules vs repo (before deploy)
+
+```bash
+export FIREBASE_PROJECT_ID="$(grep VITE_FIREBASE_PROJECT_ID .env.local 2>/dev/null | cut -d= -f2- | tr -d '\"')"
+export FIREBASE_ACCESS_TOKEN="$(gcloud auth print-access-token)"   # or a firebase login:ci token
+node scripts/fetch-deployed-firestore-rules.mjs
+diff -u firestore.rules.deployed firestore.rules
+```
+
+Release branch target: commit **`2251985`** or later (`firestore.rules` with username reservation + onboarding fields).
+
 ## Deploy (in order)
 
 ```bash

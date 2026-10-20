@@ -778,6 +778,28 @@ describe("Firestore security rules", () => {
     });
   });
 
+  it("U9 — legacy profile with username fields can patch language without reservation doc", async () => {
+    await withClearDb(async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), "users/alice"), {
+          displayName: "Alice",
+          username: "legacy_user",
+          usernameLower: "legacy_user",
+          language: "en",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      });
+      const alice = testEnv.authenticatedContext("alice");
+      await assertSucceeds(
+        updateDoc(doc(alice.firestore(), "users/alice"), {
+          language: "id",
+          updatedAt: Date.now(),
+        })
+      );
+    });
+  });
+
   it("U8 — user cannot create profile with username without reservation", async () => {
     await withClearDb(async () => {
       const alice = testEnv.authenticatedContext("alice");

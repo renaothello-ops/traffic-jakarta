@@ -27,4 +27,5 @@ dist-ssr
 *.sw?
 .env
 .env.local
+firestore.rules.deployed
 scripts/.i18n-cache/
