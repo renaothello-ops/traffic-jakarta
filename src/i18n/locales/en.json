@@ -500,7 +500,18 @@
     "voiceNow": "{{action}}{{street}}",
     "voiceOntoStreet": " onto {{street}}",
     "voiceTextOnly": "Voice guidance is unavailable — follow on-screen directions.",
-    "backgroundLimit": "Keep this tab open for live GPS and voice. Locked screen or background may pause updates."
+    "backgroundLimit": "Keep this tab open for live GPS and voice. Locked screen or background may pause updates.",
+    "statsWaiting": "Getting GPS…",
+    "voiceTapToEnable": "Tap to enable voice guidance",
+    "voiceFailed": "Voice could not play. Check volume and browser permissions.",
+    "voiceNothingToRepeat": "No guidance to repeat yet."
+  },
+  "heading": {
+    "waiting": "Direction: waiting for GPS or compass…",
+    "tapCompass": "Tap to allow compass for direction arrow.",
+    "enableCompass": "Enable compass",
+    "denied": "Compass blocked. Allow motion/orientation in browser settings, then tap Enable compass.",
+    "noSensor": "This device has no direction sensor (desktop browsers). Use a phone for the heading arrow."
   },
   "maneuvers": {
     "depart": "Head out",

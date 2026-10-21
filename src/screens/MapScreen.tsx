@@ -120,6 +120,7 @@ import CommunityRoadLayer from "../components/CommunityRoadLayer";
 import CommunityRoadComposer from "../components/CommunityRoadComposer";
 import RouteLayer from "../components/RouteLayer";
 import CurrentLocationMarker from "../components/CurrentLocationMarker";
+import LocationHeadingHint from "../components/LocationHeadingHint";
 import RouteBottomSheet from "../components/RouteBottomSheet";
 import DestinationBottomSheet from "../components/DestinationBottomSheet";
 import NavigationHud from "../components/NavigationHud";
@@ -756,6 +757,17 @@ export default function MapScreen() {
     [destination]
   );
 
+  const deviceHeadingRef = useRef<number | null>(null);
+
+  const {
+    heading: deviceHeading,
+    headingStatus,
+    requestCompassAccess,
+    orientationPermission,
+  } = useDeviceHeading({ locationActive: myPos != null });
+
+  deviceHeadingRef.current = deviceHeading;
+
   const nav = useNavigation({
     mapRef,
     mapReady,
@@ -764,6 +776,7 @@ export default function MapScreen() {
     onReroute: handleReroute,
     voiceT: t,
     voiceLanguage: i18n.language,
+    externalHeadingRef: deviceHeadingRef,
   });
 
   const isNavigating =
@@ -771,16 +784,11 @@ export default function MapScreen() {
     nav.phase === "paused" ||
     nav.phase === "arrived";
 
-  const { heading: browseHeading, requestCompassAccess } = useDeviceHeading({
-    active: !isNavigating && myPos != null,
-  });
-
   const locationMarkerPosition =
     nav.displayPosition ?? (myPos ? { lat: myPos.lat, lng: myPos.lng } : null);
 
-  const locationHeading = isNavigating
-    ? (nav.displayPosition?.heading ?? null)
-    : browseHeading;
+  const locationHeading =
+    deviceHeading ?? nav.displayPosition?.heading ?? null;
 
   const quickReportLocation = useMemo(
     () => resolveQuickReportLocation(nav.rawGps, nav.gpsFix),
@@ -1193,7 +1201,8 @@ export default function MapScreen() {
       if (map) requestManualTomTomTrafficRefresh(map);
       return;
     }
-    void (isNavigating ? nav.requestCompassAccess() : requestCompassAccess());
+    void requestCompassAccess();
+    if (isNavigating) nav.unlockVoice();
     requestLocation({
       fly: true,
       targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
@@ -1547,6 +1556,15 @@ export default function MapScreen() {
         navigating={isNavigating}
       />
 
+      {activeTab === "map" && myPos != null && !selectedPost ? (
+        <LocationHeadingHint
+          visible
+          headingStatus={headingStatus}
+          orientationPermission={orientationPermission}
+          onEnableCompass={() => void requestCompassAccess()}
+        />
+      ) : null}
+
       <CommunityRoadLayer
         mapRef={mapRef}
         mapReady={mapReady}
@@ -1821,7 +1839,7 @@ export default function MapScreen() {
             setRoutePlan((prev) => (prev ? { ...prev, selectedIndex: index } : prev))
           }
           onStartNavigation={() => {
-            void nav.requestCompassAccess();
+            void requestCompassAccess();
             nav.startNavigation();
           }}
           onClearRoute={clearRoute}
@@ -1892,6 +1910,7 @@ export default function MapScreen() {
             onResume={nav.resumeNavigation}
             onNorthUp={nav.setMapBearingNorthUp}
             onCourseUp={nav.setMapBearingCourseUp}
+            onUnlockVoice={nav.unlockVoice}
             onToggleSimulation={nav.toggleSimulation}
           />
         </>

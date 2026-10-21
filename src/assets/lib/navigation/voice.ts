@@ -1,4 +1,5 @@
 import type { RouteInstruction } from "../../../types";
+import type { RouteProgress } from "./progress";
 import { formatDistance } from "../geo";
 
 type VoiceCue = {
@@ -14,6 +15,8 @@ export type NavVoiceT = (
 let lastSpokenKey = "";
 let lastSpokenAt = 0;
 let lastSpokenText = "";
+let speechUnlocked = false;
+let lastSpeechError: string | null = null;
 
 const REPEAT_COOLDOWN_MS = 12_000;
 
@@ -27,10 +30,35 @@ export function resetVoiceState(): void {
   lastSpokenKey = "";
   lastSpokenAt = 0;
   lastSpokenText = "";
+  lastSpeechError = null;
+}
+
+export function getLastSpeechError(): string | null {
+  return lastSpeechError;
 }
 
 export function isSpeechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
+}
+
+export function isSpeechUnlocked(): boolean {
+  return speechUnlocked;
+}
+
+/** Call from a user gesture (tap) before first speak — satisfies mobile autoplay policies. */
+export function unlockSpeechFromUserGesture(): void {
+  if (!isSpeechSupported()) return;
+  speechUnlocked = true;
+  lastSpeechError = null;
+  window.speechSynthesis.getVoices();
+  const warmup = new SpeechSynthesisUtterance(" ");
+  warmup.volume = 0.01;
+  warmup.lang = "en-US";
+  warmup.onerror = () => {
+    lastSpeechError = "speech-failed";
+  };
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(warmup);
 }
 
 export function speechLocaleFromUiLanguage(language: string): string {
@@ -43,9 +71,13 @@ export function speakNavigation(
   key: string,
   muted: boolean,
   language: string,
-  options?: { force?: boolean }
+  options?: { force?: boolean; skipUnlockCheck?: boolean }
 ): void {
   if (muted || !isSpeechSupported() || !text.trim()) return;
+  if (!options?.skipUnlockCheck && !speechUnlocked) {
+    lastSpeechError = "speech-not-unlocked";
+    return;
+  }
   const now = Date.now();
   if (!options?.force && key === lastSpokenKey && now - lastSpokenAt < REPEAT_COOLDOWN_MS) {
     return;
@@ -54,19 +86,17 @@ export function speakNavigation(
   lastSpokenKey = key;
   lastSpokenAt = now;
   lastSpokenText = text;
+  lastSpeechError = null;
 
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   utter.rate = 1;
   utter.pitch = 1;
   utter.lang = speechLocaleFromUiLanguage(language);
+  utter.onerror = () => {
+    lastSpeechError = "speech-failed";
+  };
   window.speechSynthesis.speak(utter);
-}
-
-export function repeatLastVoice(muted: boolean, language: string): boolean {
-  if (!lastSpokenText || muted || !isSpeechSupported()) return false;
-  speakNavigation(lastSpokenText, `repeat-${Date.now()}`, false, language, { force: true });
-  return true;
 }
 
 function maneuverAction(instruction: RouteInstruction, t: NavVoiceT): string {
@@ -79,6 +109,44 @@ function maneuverAction(instruction: RouteInstruction, t: NavVoiceT): string {
 function streetSuffix(instruction: RouteInstruction, t: NavVoiceT): string {
   if (!instruction.street?.trim()) return "";
   return t("nav.voiceOntoStreet", { street: instruction.street });
+}
+
+export function voiceTextForProgress(
+  progress: RouteProgress | null,
+  hasArrived: boolean,
+  t: NavVoiceT
+): string | null {
+  if (hasArrived) return t("nav.arrived");
+  if (!progress?.current) return null;
+  const action = maneuverAction(progress.current, t);
+  const onto = streetSuffix(progress.current, t);
+  const dist = progress.distanceToManeuverM;
+  if (dist <= 30 && progress.current.maneuver !== "straight") {
+    return t("nav.voiceNow", { action, street: onto });
+  }
+  return t("nav.voiceIn", {
+    distance: formatDistance(Math.round(dist)),
+    action,
+    street: onto,
+  });
+}
+
+export function repeatLastVoice(
+  muted: boolean,
+  language: string,
+  fallbackText: string | null
+): boolean {
+  if (muted || !isSpeechSupported()) return false;
+  if (!speechUnlocked) {
+    unlockSpeechFromUserGesture();
+  }
+  const text = lastSpokenText || fallbackText;
+  if (!text?.trim()) return false;
+  speakNavigation(text, `repeat-${Date.now()}`, false, language, {
+    force: true,
+    skipUnlockCheck: true,
+  });
+  return true;
 }
 
 export function voiceCuesForProgress(

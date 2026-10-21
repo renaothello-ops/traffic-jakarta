@@ -32,12 +32,23 @@
     "voiceOntoStreet": "、{{street}}方面",
     "voiceTextOnly": "音声案内は利用できません。画面の案内に従ってください。",
     "backgroundLimit": "GPSと音声案内のため、このタブを開いたままにしてください。画面ロックやバックグラウンドでは更新が止まることがあります。",
+    "statsWaiting": "GPS取得中…",
+    "voiceTapToEnable": "タップして音声案内を有効にする",
+    "voiceFailed": "音声を再生できませんでした。音量とブラウザの設定を確認してください。",
+    "voiceNothingToRepeat": "まだ読み上げる案内がありません。",
     "map": "地図",
     "community": "コミュニティ",
     "profile": "プロフィール",
     "nearby": "近く",
     "post": "投稿",
     "messages": "メッセージ"
+  },
+  "heading": {
+    "waiting": "方向：GPSまたはコンパスを待っています…",
+    "tapCompass": "方向矢印のため、コンパスを許可してください。",
+    "enableCompass": "コンパスを許可",
+    "denied": "コンパスが拒否されています。ブラウザ設定で許可後、「コンパスを許可」をタップしてください。",
+    "noSensor": "この端末では方向センサーがありません（PCなど）。矢印表示はスマートフォンでお試しください。"
   },
   "welcome": {
     "title": "Traffic Jakarta へようこそ",

@@ -35,6 +35,10 @@
     "voiceOntoStreet": " menuju {{street}}",
     "voiceTextOnly": "Panduan suara tidak tersedia — ikuti petunjuk di layar.",
     "backgroundLimit": "Biarkan tab ini terbuka untuk GPS dan suara. Layar terkunci atau latar belakang dapat menghentikan pembaruan.",
+    "statsWaiting": "Mendapatkan GPS…",
+    "voiceTapToEnable": "Ketuk untuk mengaktifkan panduan suara",
+    "voiceFailed": "Suara tidak dapat diputar. Periksa volume dan izin browser.",
+    "voiceNothingToRepeat": "Belum ada panduan untuk diulang.",
     "nearby": "Terdekat",
     "post": "Posting",
     "messages": "Pesan"
@@ -673,6 +677,13 @@
   "postMarker": {
     "aria": "{{type}} report",
     "ariaVerified": "{{type}} report, community verified"
+  },
+  "heading": {
+    "waiting": "Arah: menunggu GPS atau kompas…",
+    "tapCompass": "Ketuk untuk mengizinkan kompas (panah arah).",
+    "enableCompass": "Izinkan kompas",
+    "denied": "Kompas diblokir. Izinkan orientasi di pengaturan browser, lalu ketuk Izinkan kompas.",
+    "noSensor": "Perangkat ini tidak punya sensor arah (browser desktop). Gunakan ponsel untuk panah arah."
   },
   "welcome": {
     "title": "Welcome to Traffic Jakarta",

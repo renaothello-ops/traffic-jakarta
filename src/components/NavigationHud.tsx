@@ -20,6 +20,7 @@ type Props = NavigationSnapshot & {
   onResume: () => void;
   onNorthUp: () => void;
   onCourseUp: () => void;
+  onUnlockVoice: () => void;
   onToggleSimulation?: () => void;
 };
 
@@ -34,12 +35,16 @@ export default function NavigationHud({
   isRerouting,
   rerouteMessage,
   locationMessage,
+  locationStatus,
   showRecenter,
   voiceMuted,
   speechSupported,
+  voiceReady,
+  voiceErrorKey,
   simulationActive,
   phase,
   mapBearingMode,
+  onUnlockVoice,
   onRecenter,
   onOverview,
   onEnd,
@@ -75,6 +80,21 @@ export default function NavigationHud({
       ? t(locationMessage, { defaultValue: locationMessage })
       : null;
 
+  const waitingGps =
+    locationStatus === "waiting" && phase === "navigating" && !hasArrived;
+  const durationRemainingS = hasArrived ? 0 : progress?.durationRemainingS;
+  const distanceRemainingM = hasArrived ? 0 : progress?.distanceRemainingM;
+
+  const etaLabel =
+    durationRemainingS == null ? "—" : formatDuration(durationRemainingS);
+  const remainLabel =
+    distanceRemainingM == null ? "—" : formatDistanceKm(distanceRemainingM);
+  const arriveLabel =
+    durationRemainingS == null ? "—" : formatArrivalTime(durationRemainingS);
+
+  const voiceErrorLine =
+    voiceErrorKey != null ? t(voiceErrorKey, { defaultValue: voiceErrorKey }) : null;
+
   return (
     <>
       <div className="tj-nav-hud-top">
@@ -86,6 +106,16 @@ export default function NavigationHud({
         ) : null}
         {!speechSupported ? (
           <div className="tj-nav-hud-top__status">{t("nav.voiceTextOnly")}</div>
+        ) : null}
+        {speechSupported && !voiceReady && !voiceMuted ? (
+          <div className="tj-nav-hud-top__status">
+            <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onUnlockVoice}>
+              {t("nav.voiceTapToEnable")}
+            </button>
+          </div>
+        ) : null}
+        {voiceErrorLine ? (
+          <div className="tj-nav-hud-top__status">{voiceErrorLine}</div>
         ) : null}
         <div className="tj-nav-hud-top__status tj-nav-hud-top__status--hint">
           {t("nav.backgroundLimit")}
@@ -107,16 +137,16 @@ export default function NavigationHud({
       <div className="tj-nav-hud-bottom">
         <div className="tj-nav-stats">
           <div>
-            <strong>{formatDuration(progress?.durationRemainingS ?? 0)}</strong>
-            <span>{t("nav.eta")}</span>
+            <strong>{etaLabel}</strong>
+            <span>{waitingGps ? t("nav.statsWaiting") : t("nav.eta")}</span>
           </div>
           <div>
-            <strong>{formatDistanceKm(progress?.distanceRemainingM ?? 0)}</strong>
+            <strong>{remainLabel}</strong>
             <span>{t("nav.remaining")}</span>
           </div>
           <div>
-            <strong>{formatArrivalTime(progress?.durationRemainingS ?? 0)}</strong>
-            <span>{t("nav.arrive")}</span>
+            <strong>{arriveLabel}</strong>
+            <span>{hasArrived ? t("nav.arrived") : t("nav.arrive")}</span>
           </div>
         </div>
         <div className="tj-nav-controls">

@@ -11,6 +11,22 @@ export type RouteProgress = {
   fractionComplete: number;
 };
 
+/** Progress at route start (before first GPS match). */
+export function initialRouteProgress(
+  instructions: RouteInstruction[],
+  totalDistanceM: number,
+  totalDurationS: number
+): RouteProgress {
+  return computeRouteProgress(instructions, totalDistanceM, totalDurationS, {
+    segmentIndex: 0,
+    t: 0,
+    lat: 0,
+    lng: 0,
+    crossTrackMeters: 0,
+    distanceAlongMeters: 0,
+  });
+}
+
 export function computeRouteProgress(
   instructions: RouteInstruction[],
   totalDistanceM: number,

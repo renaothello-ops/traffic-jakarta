@@ -8,27 +8,60 @@ import {
   type OrientationPermission,
 } from "../assets/lib/deviceOrientation";
 
+const COMPASS_GRANTED_KEY = "tj_compass_orientation_granted";
+
+export type DeviceHeadingStatus =
+  | "ok"
+  | "waiting"
+  | "denied"
+  | "unsupported"
+  | "no_sensor";
+
 type Options = {
-  /** When false the hook releases sensors and clears heading. */
-  active: boolean;
+  /** When true, watch GPS for course heading (requires geolocation). */
+  locationActive: boolean;
 };
 
 const SMOOTH_ALPHA = 0.2;
 const EMIT_INTERVAL_MS = 80;
 
+function readStoredCompassGranted(): boolean {
+  try {
+    return sessionStorage.getItem(COMPASS_GRANTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function storeCompassGranted(granted: boolean): void {
+  try {
+    if (granted) sessionStorage.setItem(COMPASS_GRANTED_KEY, "1");
+    else sessionStorage.removeItem(COMPASS_GRANTED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
- * Resolves geographic heading for normal (non-navigation) map mode.
- * Prefers GPS course when moving; falls back to device compass when stationary.
+ * Geographic heading for the map marker — GPS course when moving, compass when still.
+ * Compass listeners stay active after permission until the component unmounts.
  */
-export function useDeviceHeading({ active }: Options) {
+export function useDeviceHeading({ locationActive }: Options) {
   const [heading, setHeading] = useState<number | null>(null);
   const [orientationPermission, setOrientationPermission] =
-    useState<OrientationPermission>("unsupported");
+    useState<OrientationPermission>(() =>
+      !isDeviceOrientationSupported()
+        ? "unsupported"
+        : readStoredCompassGranted()
+          ? "granted"
+          : "unsupported"
+    );
 
   const smoothRef = useRef<number | null>(null);
   const gpsHeadingRef = useRef<number | null>(null);
   const gpsSpeedRef = useRef<number | null>(null);
   const compassRef = useRef<number | null>(null);
+  const lastCompassAtRef = useRef(0);
   const lastEmitRef = useRef(0);
   const compassListeningRef = useRef(false);
   const watchIdRef = useRef<number | null>(null);
@@ -84,6 +117,7 @@ export function useDeviceHeading({ active }: Options) {
       const h = compassHeadingFromEvent(event);
       if (h == null) return;
       compassRef.current = h;
+      lastCompassAtRef.current = Date.now();
       emitHeading();
     },
     [emitHeading]
@@ -107,21 +141,30 @@ export function useDeviceHeading({ active }: Options) {
     if (!isDeviceOrientationSupported()) return;
     const result = await requestDeviceOrientationPermission();
     setOrientationPermission(result);
+    storeCompassGranted(result === "granted");
     if (result === "granted") startCompassListening();
-  }, [startCompassListening]);
+    if (result === "denied") {
+      compassRef.current = null;
+      emitHeading();
+    }
+  }, [emitHeading, startCompassListening]);
 
   useEffect(() => {
-    if (!active) {
+    if (orientationPermission === "granted") {
+      startCompassListening();
+    }
+    return () => stopCompassListening();
+  }, [orientationPermission, startCompassListening, stopCompassListening]);
+
+  useEffect(() => {
+    if (!locationActive) {
       if (watchIdRef.current != null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
-      stopCompassListening();
       gpsHeadingRef.current = null;
       gpsSpeedRef.current = null;
-      compassRef.current = null;
-      smoothRef.current = null;
-      setHeading(null);
+      emitHeading();
       return;
     }
 
@@ -136,36 +179,43 @@ export function useDeviceHeading({ active }: Options) {
         emitHeading();
       },
       () => {
-        // Silently ignore — location errors are handled elsewhere.
+        /* location errors handled elsewhere */
       },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 12_000 }
     );
-
-    if (orientationPermission === "granted") {
-      startCompassListening();
-    }
 
     return () => {
       if (watchIdRef.current != null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
-      stopCompassListening();
+    };
+  }, [locationActive, emitHeading]);
+
+  useEffect(
+    () => () => {
       if (rafRef.current != null) {
         window.cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
       }
-    };
-  }, [
-    active,
-    emitHeading,
-    orientationPermission,
-    startCompassListening,
-    stopCompassListening,
-  ]);
+    },
+    []
+  );
+
+  const headingStatus: DeviceHeadingStatus = (() => {
+    if (heading != null) return "ok";
+    if (!isDeviceOrientationSupported()) return "no_sensor";
+    if (orientationPermission === "denied") return "denied";
+    if (orientationPermission === "unsupported") return "waiting";
+    if (orientationPermission === "granted") {
+      if (lastCompassAtRef.current === 0 && !locationActive) return "waiting";
+      return "waiting";
+    }
+    return "waiting";
+  })();
 
   return {
     heading,
+    headingStatus,
     requestCompassAccess,
     orientationSupported: isDeviceOrientationSupported(),
     orientationPermission,

@@ -54,7 +54,11 @@ export default function CurrentLocationMarker({
     dotEl.className = "tj-my-location";
     dotEl.setAttribute("aria-hidden", "true");
 
-    el.append(accuracyEl, coneEl, haloEl, dotEl);
+    const arrowEl = document.createElement("div");
+    arrowEl.className = "tj-my-location-arrow";
+    arrowEl.setAttribute("aria-hidden", "true");
+
+    el.append(accuracyEl, coneEl, haloEl, arrowEl, dotEl);
     wrapRef.current = el;
     accuracyRef.current = accuracyEl;
     coneRef.current = coneEl;
@@ -105,14 +109,21 @@ export default function CurrentLocationMarker({
       if (!coneEl) return;
 
       const h = headingRef.current;
+      const arrowEl = wrapRef.current?.querySelector(".tj-my-location-arrow");
       if (h == null || !Number.isFinite(h)) {
         coneEl.style.display = "none";
+        if (arrowEl instanceof HTMLElement) arrowEl.style.display = "none";
         return;
       }
 
       coneEl.style.display = "block";
       const mapBearing = map.getBearing();
-      coneEl.style.transform = `rotate(${h - mapBearing}deg)`;
+      const rot = `rotate(${h - mapBearing}deg)`;
+      coneEl.style.transform = rot;
+      if (arrowEl instanceof HTMLElement) {
+        arrowEl.style.display = "block";
+        arrowEl.style.transform = rot;
+      }
     };
 
     const sync = () => {
@@ -166,13 +177,20 @@ export default function CurrentLocationMarker({
     if (!map || !coneEl) return;
 
     const h = heading;
-    if (h == null || !Number.isFinite(h)) {
-      coneEl.style.display = "none";
-      return;
-    }
+      const arrowEl = wrapRef.current?.querySelector(".tj-my-location-arrow");
+      if (h == null || !Number.isFinite(h)) {
+        coneEl.style.display = "none";
+        if (arrowEl instanceof HTMLElement) arrowEl.style.display = "none";
+        return;
+      }
 
-    coneEl.style.display = "block";
-    coneEl.style.transform = `rotate(${h - map.getBearing()}deg)`;
+      const rot = `rotate(${h - map.getBearing()}deg)`;
+      coneEl.style.display = "block";
+      coneEl.style.transform = rot;
+      if (arrowEl instanceof HTMLElement) {
+        arrowEl.style.display = "block";
+        arrowEl.style.transform = rot;
+      }
   }, [heading, mapReady, mapRef]);
 
   return null;
