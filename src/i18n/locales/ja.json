@@ -307,7 +307,8 @@
     "mapCenter": "地図の中心",
     "destinationAria": "目的地",
     "myLocationAria": "現在地",
-    "drawCommunityRoad": "コミュニティ道路を描く"
+    "drawCommunityRoad": "コミュニティ道路を描く",
+    "liveReports": "ライブ交通情報"
   },
   "errors": {
     "searchUnavailable": "検索は一時的に利用できません",
@@ -735,5 +736,45 @@
   "postMarker": {
     "aria": "{{type}} report",
     "ariaVerified": "{{type}} report, community verified"
+  },
+  "liveTraffic": {
+    "title": "ライブ交通情報",
+    "subtitle": "ジャカルタ周辺の現在の交通問題（TomTom＋ユーザー報告）",
+    "openButton": "ライブ交通情報",
+    "sortLabel": "並べ替え",
+    "sortSeverity": "深刻度",
+    "sortNewest": "新着",
+    "sortNearest": "近い順",
+    "empty": "現在、このエリアで報告されている交通問題はありません。",
+    "lastUpdated": "データ更新 {{time}}",
+    "lastUpdatedUnknown": "最終更新時刻は未確認",
+    "fetchUnavailable": "最新の交通インシデントを取得できません。キャッシュまたはユーザー報告のみ表示しています。",
+    "fetchStale": "提供元データが古い可能性があります。次の更新で再試行します。",
+    "severityScore": "深刻度 {{score}}",
+    "delay": "遅延 {{value}}",
+    "delayUnknown": "遅延時間は未確認",
+    "length": "影響範囲 {{value}}",
+    "lengthUnknown": "影響距離は未確認",
+    "summaryUnknown": "詳細は未確認",
+    "unconfirmed": "未確認",
+    "sourceProvider": "提供元データ",
+    "sourceCommunity": "ユーザー報告",
+    "detailTitle": "詳細",
+    "viewSource": "元の情報を見る",
+    "noExternalSource": "この項目の外部リンクはありません。",
+    "footnote": "公式ニュース・RSS・SNSフィードは未接続です。TomTomにはニュースURLは含まれません。",
+    "category": {
+      "accident": "事故",
+      "congestion": "渋滞",
+      "flood": "洪水",
+      "road_closed": "道路封鎖",
+      "construction": "工事",
+      "lane_closed": "車線規制",
+      "breakdown": "故障車",
+      "hazard": "危険",
+      "weather": "気象",
+      "other": "その他",
+      "unknown": "種類未確認"
+    }
   }
 }

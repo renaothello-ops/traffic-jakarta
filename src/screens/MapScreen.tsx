@@ -70,6 +70,7 @@ import {
   trafficRefreshDiagnostics,
 } from "../assets/lib/trafficRefresh";
 import MapToolsRail from "../components/MapToolsRail";
+import LiveTrafficReportsSheet from "../components/LiveTrafficReportsSheet";
 import { useMapToolsRailPosition } from "../hooks/useMapToolsRailPosition";
 import { requestCurrentPosition } from "../assets/lib/geolocation";
 import { getBaseMapStyleUrl } from "../assets/lib/baseMap";
@@ -347,6 +348,7 @@ export default function MapScreen() {
   });
   const [notificationCenterOpen, setNotificationCenterOpen] = useState(false);
   const [trafficDetailOpen, setTrafficDetailOpen] = useState(false);
+  const [liveTrafficOpen, setLiveTrafficOpen] = useState(false);
   const [trafficDetailAlert, setTrafficDetailAlert] =
     useState<LocalTrafficNotification | null>(null);
 
@@ -1458,6 +1460,7 @@ export default function MapScreen() {
     roadComposerOpen ||
     editing != null ||
     trafficDetailOpen ||
+    liveTrafficOpen ||
     (selectedPost != null && !openComposer);
 
   const roadLineGeoJson = useMemo(
@@ -1726,6 +1729,13 @@ export default function MapScreen() {
               </div>
 
               <div className="tj-top-bar__tools">
+                <button
+                  type="button"
+                  className="tj-btn tj-btn--ghost tj-btn--compact tj-live-traffic-entry"
+                  onClick={() => setLiveTrafficOpen(true)}
+                >
+                  {t("map.liveReports")}
+                </button>
                 <select
                   className="tj-select tj-select--compact"
                   value={filterMin}
@@ -1828,6 +1838,17 @@ export default function MapScreen() {
 
         </>
       )}
+
+      {liveTrafficOpen && activeTab === "map" && !isNavigating ? (
+        <LiveTrafficReportsSheet
+          open={liveTrafficOpen}
+          posts={visibleMapPosts}
+          mapRef={mapRef}
+          refLat={myPos?.lat ?? center.lat}
+          refLng={myPos?.lng ?? center.lng}
+          onClose={() => setLiveTrafficOpen(false)}
+        />
+      ) : null}
 
       {showMapTools && (
         <MapToolsRail

@@ -36,6 +36,7 @@ firebase deploy --only functions:api,hosting
 | `GET /api/tomtom-route` | `routing.ts` | TomTom Routing | No (rate limit) | Fixed query params |
 | `GET /api/tomtom-flow-segment` | `tomtomAdapter.ts` | TomTom Flow Segment | No (rate limit) | lat/lng bounds |
 | `GET /api/tomtom-flow.png` | `useTomTomTrafficLayer`, tiles | TomTom flow tiles | No (rate limit) | z/x/y validated |
+| `GET /api/live-traffic-reports` | `LiveTrafficReportsSheet` | TomTom Incident Details v5 (cached server-side) | No (rate limit) | Jakarta bbox; `lang` query |
 | `POST /api/analyze-report` | `analyzeTrafficText.ts` | Rule-based (optional OpenAI) | No (rate limit) | No open proxy |
 
 Unknown `/api/*` → **404 JSON** (no URL passthrough).

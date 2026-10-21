@@ -257,7 +257,8 @@
     "destinationAria": "目的地",
     "myLocationAria": "我的位置",
     "drawCommunityRoad": "繪製社區道路",
-    "endRoute": "× End route"
+    "endRoute": "× End route",
+    "liveReports": "Live Reports"
   },
   "errors": {
     "searchUnavailable": "暫時無法搜尋",
@@ -735,5 +736,45 @@
     "enableCompassIos": "Enable compass",
     "deniedShort": "Compass access denied.",
     "unavailable": "Direction unavailable on this device."
+  },
+  "liveTraffic": {
+    "title": "Live Reports",
+    "subtitle": "Current traffic problems around Jakarta (TomTom + community reports)",
+    "openButton": "Live Reports",
+    "sortLabel": "Sort",
+    "sortSeverity": "Severity",
+    "sortNewest": "Newest",
+    "sortNearest": "Nearest",
+    "empty": "No active traffic problems reported in this area right now.",
+    "lastUpdated": "Data updated {{time}}",
+    "lastUpdatedUnknown": "Latest update time unconfirmed",
+    "fetchUnavailable": "Could not fetch the latest traffic incidents. Showing cached or community data only.",
+    "fetchStale": "Provider data may be outdated. Retrying on the next refresh.",
+    "severityScore": "Severity {{score}}",
+    "delay": "Delay {{value}}",
+    "delayUnknown": "Delay unconfirmed",
+    "length": "Impact {{value}}",
+    "lengthUnknown": "Impact distance unconfirmed",
+    "summaryUnknown": "Details unconfirmed",
+    "unconfirmed": "Unconfirmed",
+    "sourceProvider": "Provider data",
+    "sourceCommunity": "Community report",
+    "detailTitle": "Details",
+    "viewSource": "View original source",
+    "noExternalSource": "No external article link is available for this item.",
+    "footnote": "Official news, RSS, and social feeds are not connected yet. TomTom does not provide news URLs.",
+    "category": {
+      "accident": "Accident",
+      "congestion": "Congestion",
+      "flood": "Flooding",
+      "road_closed": "Road closed",
+      "construction": "Road works",
+      "lane_closed": "Lane closed",
+      "breakdown": "Broken-down vehicle",
+      "hazard": "Hazard",
+      "weather": "Weather",
+      "other": "Other",
+      "unknown": "Unconfirmed type"
+    }
   }
 }

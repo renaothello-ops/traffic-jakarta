@@ -364,6 +364,23 @@ export async function handleApiHttp(
     return true;
   }
 
+  if (url.startsWith("/api/live-traffic-reports")) {
+    const { default: liveTrafficHandler } = await import("../api/live-traffic-reports.js");
+    const query = Object.fromEntries(new URL(`http://local${url}`).searchParams.entries());
+    await liveTrafficHandler(
+      { method, query, headers: req.headers as Record<string, string | string[] | undefined> },
+      {
+        status: (code: number) => ({
+          json: (body: unknown) => {
+            setJson(res, code, body);
+          },
+        }),
+        setHeader: (name: string, value: string) => res.setHeader(name, value),
+      }
+    );
+    return true;
+  }
+
   if (url.startsWith("/api/")) {
     setJson(res, 404, { error: "Unknown API route" });
     return true;

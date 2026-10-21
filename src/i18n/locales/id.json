@@ -265,7 +265,8 @@
     "destinationAria": "Tujuan",
     "myLocationAria": "Lokasi saya",
     "drawCommunityRoad": "Gambar jalan komunitas",
-    "endRoute": "× End route"
+    "endRoute": "× End route",
+    "liveReports": "Laporan langsung"
   },
   "errors": {
     "searchUnavailable": "Pencarian sementara tidak tersedia",
@@ -734,6 +735,46 @@
       "usernameChecking": "Wait for username check to finish",
       "rulesNotDeployed": "Profile setup is blocked by server permissions. Firestore Security Rules in the repo must be deployed to Firebase before new sign-ups can finish. Your operator has not deployed them yet — try again after deployment.",
       "permissionDenied": "Could not save your profile (permission denied). Confirm Firestore Rules are published for project “{{projectId}}” and that this Preview uses the same Firebase project in Vercel env vars."
+    }
+  },
+  "liveTraffic": {
+    "title": "Laporan lalu lintas langsung",
+    "subtitle": "Masalah lalu lintas di Jakarta saat ini (TomTom + laporan pengguna)",
+    "openButton": "Laporan langsung",
+    "sortLabel": "Urutkan",
+    "sortSeverity": "Tingkat keparahan",
+    "sortNewest": "Terbaru",
+    "sortNearest": "Terdekat",
+    "empty": "Tidak ada masalah lalu lintas aktif di area ini saat ini.",
+    "lastUpdated": "Data diperbarui {{time}}",
+    "lastUpdatedUnknown": "Waktu pembaruan terakhir belum dikonfirmasi",
+    "fetchUnavailable": "Tidak dapat mengambil insiden lalu lintas terbaru. Hanya menampilkan cache atau laporan pengguna.",
+    "fetchStale": "Data penyedia mungkin sudah usang. Akan dicoba lagi pada pembaruan berikutnya.",
+    "severityScore": "Keparahan {{score}}",
+    "delay": "Penundaan {{value}}",
+    "delayUnknown": "Penundaan belum dikonfirmasi",
+    "length": "Dampak {{value}}",
+    "lengthUnknown": "Jarak dampak belum dikonfirmasi",
+    "summaryUnknown": "Detail belum dikonfirmasi",
+    "unconfirmed": "Belum dikonfirmasi",
+    "sourceProvider": "Data penyedia",
+    "sourceCommunity": "Laporan pengguna",
+    "detailTitle": "Detail",
+    "viewSource": "Lihat sumber asli",
+    "noExternalSource": "Tidak ada tautan eksternal untuk item ini.",
+    "footnote": "Berita resmi, RSS, dan media sosial belum terhubung. TomTom tidak menyediakan URL berita.",
+    "category": {
+      "accident": "Kecelakaan",
+      "congestion": "Kemacetan",
+      "flood": "Banjir",
+      "road_closed": "Jalan ditutup",
+      "construction": "Pekerjaan jalan",
+      "lane_closed": "Lajur ditutup",
+      "breakdown": "Kendaraan mogok",
+      "hazard": "Bahaya",
+      "weather": "Cuaca",
+      "other": "Lainnya",
+      "unknown": "Jenis belum dikonfirmasi"
     }
   }
 }

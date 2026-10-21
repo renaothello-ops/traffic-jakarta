@@ -3912,3 +3912,154 @@ body.tj-rtl .tj-language-option__check {
   padding-left: 24px;
   padding-right: 24px;
 }
+
+.tj-live-traffic-entry {
+  white-space: nowrap;
+  max-width: 42vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tj-live-traffic-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 58;
+  background: rgba(15, 23, 42, 0.32);
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.tj-live-traffic-sheet {
+  width: 100%;
+  max-height: min(88vh, 640px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.99);
+  border-radius: 18px 18px 0 0;
+  padding: 10px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.18);
+}
+
+.tj-live-traffic-sheet__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.tj-live-traffic-sheet__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.tj-live-traffic-sheet__subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.tj-live-traffic-banner {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.tj-live-traffic-meta {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.tj-live-traffic-sort {
+  margin-bottom: 12px;
+}
+
+.tj-live-traffic-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.tj-live-traffic-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.tj-live-traffic-card--selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.tj-live-traffic-card__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.tj-live-traffic-card__road {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.tj-live-traffic-card__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.tj-live-traffic-card__summary {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1e293b;
+}
+
+.tj-live-traffic-card__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.tj-live-traffic-detail {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tj-live-traffic-detail__title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.tj-live-traffic-footnote {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #94a3b8;
+}
