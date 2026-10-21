@@ -2,7 +2,8 @@
   "welcome": {
     "title": "Welcome to Traffic Jakarta",
     "subtitle": "Live Jakarta traffic map, community reports, and messages. Sign in to get started.",
-    "signInHint": "By continuing, you will sign in with Google. Profile setup comes next."
+    "signInHint": "By continuing, you will sign in with Google. Profile setup comes next.",
+    "languageLabel": "Language"
   },
   "onboarding": {
     "stepProfile": "Step 1 of 2",
@@ -24,6 +25,7 @@
       "usernameRequired": "Username is required",
       "usernameUnavailable": "Choose a different username",
       "usernameChecking": "Wait for username check to finish",
+      "permissionDenied": "Could not save your profile (permission denied). Confirm Firestore Rules are published for project “{{projectId}}” and that this Preview uses the same Firebase project in Vercel env vars.",
       "rulesNotDeployed": "Profile setup is blocked by server permissions. Firestore Security Rules in the repo must be deployed to Firebase before new sign-ups can finish. Your operator has not deployed them yet — try again after deployment."
     }
   },

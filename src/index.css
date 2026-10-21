@@ -3385,6 +3385,61 @@ body.tj-rtl .tj-language-option__check {
   margin-top: 8px;
 }
 
+.tj-welcome-lang {
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.tj-welcome-lang__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--tj-ig-touch, 44px);
+  padding: 8px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tj-welcome-lang__current {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--tj-ig-accent, #0095f6);
+}
+
+.tj-welcome-lang__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  max-height: min(50vh, 320px);
+  overflow: auto;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.tj-welcome-lang__search {
+  margin-bottom: 8px;
+}
+
+.tj-welcome-lang__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tj-onboarding .tj-welcome-lang {
+  margin-bottom: 12px;
+}
+
 .tj-welcome__legal {
   margin-top: 12px;
   text-align: center;

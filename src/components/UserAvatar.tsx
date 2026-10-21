@@ -5,7 +5,7 @@ type Props = {
   profile: Pick<
     UserProfile,
     "displayName" | "photoURL" | "avatarSource" | "privacySettings"
-  > | null;
+  > & { updatedAt?: number } | null;
   authPhotoURL?: string | null;
   size?: number;
   className?: string;
@@ -28,12 +28,17 @@ export default function UserAvatar({
   const useGoogle =
     profile?.avatarSource !== "initials" &&
     (profile?.photoURL || authPhotoURL);
-  const src =
+  const rawSrc =
     profile?.avatarSource === "google"
       ? profile.photoURL || authPhotoURL
       : profile?.avatarSource === "custom"
         ? profile.photoURL
         : null;
+
+  const src =
+    rawSrc && profile?.avatarSource === "custom" && profile.updatedAt
+      ? `${rawSrc}${rawSrc.includes("?") ? "&" : "?"}v=${profile.updatedAt}`
+      : rawSrc;
 
   if (useGoogle && src) {
     return (

@@ -219,42 +219,40 @@ export async function claimUsername(
   const sameHandle = previousUsernameLower === lower;
   if (sameHandle && !userCompletionPatch) return;
 
-  try {
-    await runTransaction(db, async (tx) => {
-      if (!sameHandle) {
-        const nameSnap = await tx.get(usernameRef(lower));
-        if (nameSnap.exists() && nameSnap.data()?.uid !== uid) {
-          throw new Error("profile.username.errors.taken");
-        }
-      }
-      const userSnap = await tx.get(userRef(uid));
-      const prev =
-        (userSnap.data()?.usernameLower as string | undefined) ?? null;
+  const userSnap = await getDoc(userRef(uid));
+  const prev = (userSnap.data()?.usernameLower as string | undefined) ?? null;
 
-      if (!sameHandle) {
+  try {
+    if (!sameHandle) {
+      await runTransaction(db, async (tx) => {
+        const nameSnap = await tx.get(usernameRef(lower));
+        if (nameSnap.exists()) {
+          if (nameSnap.data()?.uid !== uid) {
+            throw new Error("profile.username.errors.taken");
+          }
+          return;
+        }
         tx.set(usernameRef(lower), {
           uid,
           createdAt: Date.now(),
         });
-      }
+      });
+    }
 
-      const userMerge: Record<string, unknown> = {
-        username: lower,
-        usernameLower: lower,
-        updatedAt: Date.now(),
-        ...(userCompletionPatch ?? {}),
-      };
-
-      tx.set(userRef(uid), userMerge, { merge: true });
-
-      if (!sameHandle && prev && prev !== lower) {
-        const prevRef = usernameRef(prev);
-        const prevSnap = await tx.get(prevRef);
-        if (prevSnap.exists() && prevSnap.data()?.uid === uid) {
-          tx.delete(prevRef);
-        }
-      }
+    await updateDoc(userRef(uid), {
+      username: lower,
+      usernameLower: lower,
+      updatedAt: Date.now(),
+      ...(userCompletionPatch ?? {}),
     });
+
+    if (!sameHandle && prev && prev !== lower) {
+      const prevRef = usernameRef(prev);
+      const prevSnap = await getDoc(prevRef);
+      if (prevSnap.exists() && prevSnap.data()?.uid === uid) {
+        await deleteDoc(prevRef);
+      }
+    }
   } catch (e) {
     if (e instanceof Error && e.message.startsWith("profile.username.")) {
       throw e;

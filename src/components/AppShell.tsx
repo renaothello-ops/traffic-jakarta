@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import MapScreen from "../screens/MapScreen";
 import WelcomeScreen from "./WelcomeScreen";
 import OnboardingFlow from "./OnboardingFlow";
-import LanguageSettingsSheet from "./settings/LanguageSettingsSheet";
 import { useAuth } from "../contexts/useAuth";
 import { useUserProfile } from "../contexts/UserProfileContext";
 import { needsOnboarding } from "../assets/lib/onboarding";
@@ -12,7 +10,6 @@ export default function AppShell() {
   const { t } = useTranslation();
   const { user, loading, authError, signIn, clearAuthError } = useAuth();
   const { profile, profileInitialLoading, refreshProfile } = useUserProfile();
-  const [languageOpen, setLanguageOpen] = useState(false);
 
   if (loading || (user && profileInitialLoading)) {
     return (
@@ -32,11 +29,7 @@ export default function AppShell() {
             clearAuthError();
             void signIn();
           }}
-          onOpenLanguage={() => setLanguageOpen(true)}
         />
-        {languageOpen ? (
-          <LanguageSettingsSheet profile={null} onClose={() => setLanguageOpen(false)} />
-        ) : null}
       </>
     );
   }
@@ -49,6 +42,7 @@ export default function AppShell() {
             profile={profile}
             authPhotoURL={user.photoURL}
             onComplete={() => void refreshProfile()}
+            onProfileUpdated={() => void refreshProfile()}
           />
         ) : (
           <div className="tj-welcome tj-welcome--loading">

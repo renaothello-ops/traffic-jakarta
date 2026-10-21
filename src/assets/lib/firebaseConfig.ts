@@ -152,6 +152,13 @@ export function buildFirebaseWebConfig(): FirebaseWebConfig {
   };
 }
 
+/** Safe to show in UI — identifies which Firebase project the Preview/build uses. */
+export function readEnvProjectId(): string | null {
+  const id = readEnv("VITE_FIREBASE_PROJECT_ID");
+  if (isPlaceholder(id) || !isValidProjectId(id)) return null;
+  return id;
+}
+
 export function getFirebaseConfigErrorMessage(): string | null {
   const issues = getFirebaseConfigIssues();
   if (issues.length === 0) return null;

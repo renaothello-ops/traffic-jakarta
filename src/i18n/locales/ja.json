@@ -28,31 +28,33 @@
     "messages": "メッセージ"
   },
   "welcome": {
-    "title": "Welcome to Traffic Jakarta",
-    "subtitle": "Live Jakarta traffic map, community reports, and messages. Sign in to get started.",
-    "signInHint": "By continuing, you will sign in with Google. Profile setup comes next."
+    "title": "Traffic Jakarta へようこそ",
+    "subtitle": "ジャカルタの交通マップ、コミュニティ報告、メッセージ。Googleでサインインして始めましょう。",
+    "signInHint": "続行すると Google アカウントでサインインします。次にプロフィール設定があります。",
+    "languageLabel": "言語"
   },
   "onboarding": {
-    "stepProfile": "Step 1 of 2",
-    "stepLegal": "Step 2 of 2",
-    "profileTitle": "Set up your profile",
-    "profileHint": "Choose how others see you on reports and messages.",
-    "legalTitle": "Policies",
-    "legalHint": "Review our policies before using the app.",
-    "legalDraftNotice": "Terms and privacy pages are still marked as draft for owner review. We record that you read them, not a final legal agreement.",
-    "viewTerms": "Terms of Service (draft)",
-    "viewPrivacy": "Privacy Policy (draft)",
-    "acknowledgeDraftPolicies": "I have read the draft Terms and Privacy pages",
-    "agreeTermsPublished": "I agree to the Terms of Service (version {{version}})",
-    "finish": "Start using Traffic Jakarta",
-    "usernameAvailable": "Username is available",
-    "usernameChecking": "Checking availability…",
+    "stepProfile": "ステップ 1 / 2",
+    "stepLegal": "ステップ 2 / 2",
+    "profileTitle": "プロフィールを設定",
+    "profileHint": "報告やメッセージで表示される名前とユーザー名を決めます。",
+    "legalTitle": "ポリシー",
+    "legalHint": "利用前にポリシーを確認してください。",
+    "legalDraftNotice": "利用規約・プライバシーはオーナー確認用のドラフトです。正式な法的同意ではなく、読んだ記録のみ残します。",
+    "viewTerms": "利用規約（ドラフト）",
+    "viewPrivacy": "プライバシーポリシー（ドラフト）",
+    "acknowledgeDraftPolicies": "ドラフトの利用規約とプライバシーを読みました",
+    "agreeTermsPublished": "利用規約に同意します（版 {{version}}）",
+    "finish": "Traffic Jakarta を使い始める",
+    "usernameAvailable": "このユーザー名は利用できます",
+    "usernameChecking": "利用可否を確認中…",
     "errors": {
-      "displayNameRequired": "Display name is required",
-      "usernameRequired": "Username is required",
-      "usernameUnavailable": "Choose a different username",
-      "usernameChecking": "Wait for username check to finish",
-      "rulesNotDeployed": "Profile setup is blocked by server permissions. Firestore Security Rules in the repo must be deployed to Firebase before new sign-ups can finish. Your operator has not deployed them yet — try again after deployment."
+      "displayNameRequired": "表示名を入力してください",
+      "usernameRequired": "ユーザー名を入力してください",
+      "usernameUnavailable": "別のユーザー名を選んでください",
+      "usernameChecking": "ユーザー名の確認が終わるまでお待ちください",
+      "permissionDenied": "プロフィールを保存できませんでした（権限エラー）。Firebase プロジェクト「{{projectId}}」に Firestore Rules が公開されているか、この Preview の VITE_FIREBASE_* が同じプロジェクトか確認してください。",
+      "rulesNotDeployed": "サーバー権限によりプロフィール設定がブロックされています。新規登録を完了するには Firestore Security Rules の公開が必要です。"
     }
   },
   "auth": {
