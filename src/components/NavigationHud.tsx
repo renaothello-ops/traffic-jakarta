@@ -1,3 +1,4 @@
+import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { Destination } from "../types";
 import type { NavigationSnapshot } from "../hooks/useNavigation";
@@ -23,6 +24,7 @@ type Props = NavigationSnapshot & {
   onCourseUp: () => void;
   onUnlockVoice: () => void;
   onToggleSimulation?: () => void;
+  onNavHudAnchor?: (el: HTMLElement | null) => void;
 };
 
 function maneuverLabelKey(kind: string): string {
@@ -56,8 +58,20 @@ export default function NavigationHud({
   onNorthUp,
   onCourseUp,
   onToggleSimulation,
+  onNavHudAnchor,
 }: Props) {
   const { t } = useTranslation();
+
+  const navHudBottomRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      onNavHudAnchor?.(node);
+    },
+    [onNavHudAnchor]
+  );
+
+  useEffect(() => {
+    return () => onNavHudAnchor?.(null);
+  }, [onNavHudAnchor]);
   const instruction = progress?.current;
   const maneuver = hasArrived ? "arrive" : instruction?.maneuver ?? "straight";
   const title = hasArrived
@@ -136,7 +150,7 @@ export default function NavigationHud({
         </div>
       </div>
 
-      <div className="tj-nav-hud-bottom">
+      <div ref={navHudBottomRef} className="tj-nav-hud-bottom">
         <div className="tj-nav-stats">
           <div>
             <strong>{etaLabel}</strong>

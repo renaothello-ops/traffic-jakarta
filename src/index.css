@@ -246,8 +246,8 @@ textarea {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 56px;
-  z-index: 12;
+  bottom: var(--tj-bottom-nav-height, 56px);
+  z-index: 34;
   background: rgba(255, 255, 255, 0.98);
   border-radius: 16px 16px 0 0;
   padding: 6px 12px 10px;
@@ -319,38 +319,19 @@ textarea {
 
 .tj-map-tools-rail {
   position: absolute;
-  right: max(12px, env(safe-area-inset-right, 0px));
-  bottom: calc(
-    var(--tj-bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px) +
-      var(--tj-map-tools-offset, 80px)
-  );
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--tj-bottom-nav-height, 56px) + 12px);
   z-index: 40;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
-  max-width: min(200px, calc(100vw - 24px));
+  gap: 8px;
+  max-width: min(168px, calc(100vw - 20px));
   pointer-events: none;
 }
 
 .tj-map-tools-rail > * {
   pointer-events: auto;
-}
-
-.tj-map-chrome--default {
-  --tj-map-tools-offset: 80px;
-}
-
-.tj-map-chrome--dest-sheet {
-  --tj-map-tools-offset: 128px;
-}
-
-.tj-map-chrome--route-preview {
-  --tj-map-tools-offset: calc(min(42vh, 360px) + 20px);
-}
-
-.tj-map-chrome--navigating {
-  --tj-map-tools-offset: 272px;
 }
 
 .tj-map-tool-btn {
@@ -383,7 +364,7 @@ textarea {
   white-space: nowrap;
 }
 
-@media (max-width: 360px) {
+@media (max-width: 430px) {
   .tj-map-tool-btn__label {
     position: absolute;
     width: 1px;
@@ -627,9 +608,9 @@ textarea {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 56px;
+  bottom: var(--tj-bottom-nav-height, 56px);
   z-index: 34;
-  max-height: min(52vh, 420px);
+  max-height: min(78vh, 480px);
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -772,7 +753,7 @@ textarea {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 56px;
+  bottom: var(--tj-bottom-nav-height, 56px);
   z-index: 36;
   background: rgba(255, 255, 255, 0.98);
   border-radius: 18px 18px 0 0;
@@ -1676,6 +1657,24 @@ textarea {
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.12);
   margin: 0 auto 10px;
+}
+
+.tj-sheet__handle--draggable {
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 10px 0 6px;
+  touch-action: none;
+  cursor: grab;
+  box-sizing: content-box;
+}
+
+.tj-sheet__handle--draggable:active {
+  cursor: grabbing;
+}
+
+.tj-map-anchor-sheet {
+  display: flex;
+  flex-direction: column;
 }
 
 .tj-sheet__header {

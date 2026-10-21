@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useDraggableMapSheet } from "../hooks/useDraggableMapSheet";
 import { useTranslation } from "react-i18next";
 import type { RoutePlan } from "../types";
 import type { RouteWarningItem } from "../intelligence/types";
@@ -22,6 +23,7 @@ type Props = {
   onStartNavigation: () => void;
   onClearRoute: () => void;
   onChangeDestination: () => void;
+  onSheetElement?: (el: HTMLElement | null) => void;
 };
 
 export default function RouteBottomSheet({
@@ -33,8 +35,22 @@ export default function RouteBottomSheet({
   onStartNavigation,
   onClearRoute,
   onChangeDestination,
+  onSheetElement,
 }: Props) {
   const { t } = useTranslation();
+  const { setSheetRef, handleProps } = useDraggableMapSheet({ minHeightPx: 120 });
+
+  const mergedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setSheetRef(node);
+      onSheetElement?.(node);
+    },
+    [onSheetElement, setSheetRef]
+  );
+
+  useEffect(() => {
+    return () => onSheetElement?.(null);
+  }, [onSheetElement]);
   const selected = routePlan.routes[routePlan.selectedIndex];
   const dest = routePlan.destination;
 
@@ -47,8 +63,8 @@ export default function RouteBottomSheet({
   );
 
   return (
-    <div className="tj-route-sheet">
-      <div className="tj-sheet__handle" />
+    <div ref={mergedRef} className="tj-route-sheet tj-map-anchor-sheet">
+      <div className="tj-sheet__handle tj-sheet__handle--draggable" {...handleProps} />
       <div className="tj-route-sheet__head">
         <div>
           <div className="tj-route-sheet__label">{t("route.preview")}</div>

@@ -69,7 +69,8 @@ import {
   requestManualTomTomTrafficRefresh,
   trafficRefreshDiagnostics,
 } from "../assets/lib/trafficRefresh";
-import MapViewModeToggle from "../components/MapViewModeToggle";
+import MapToolsRail from "../components/MapToolsRail";
+import { useMapToolsRailPosition } from "../hooks/useMapToolsRailPosition";
 import { requestCurrentPosition } from "../assets/lib/geolocation";
 import { getBaseMapStyleUrl } from "../assets/lib/baseMap";
 import { auth } from "../assets/lib/firebase";
@@ -1404,14 +1405,21 @@ export default function MapScreen() {
 
   const showMapChrome = activeTab === "map" && !isNavigating;
   const showMapTools = activeTab === "map" && !selectedPost;
-  const mapToolsLayout =
-    isNavigating
-      ? "navigating"
-      : routePlan && nav.phase === "preview"
-        ? "route-preview"
-        : destination && !routePlan && !destPickMode
-          ? "dest-sheet"
-          : "default";
+  const [mapSheetAnchorEl, setMapSheetAnchorEl] = useState<HTMLElement | null>(null);
+  const [navHudAnchorEl, setNavHudAnchorEl] = useState<HTMLElement | null>(null);
+  const handleMapSheetElement = useCallback((el: HTMLElement | null) => {
+    setMapSheetAnchorEl(el);
+  }, []);
+  const handleNavHudAnchor = useCallback((el: HTMLElement | null) => {
+    setNavHudAnchorEl(el);
+  }, []);
+  const mapToolsRailMode = isNavigating
+    ? "above-nav-hud"
+    : mapSheetAnchorEl
+      ? "above-sheet"
+      : "default";
+  const mapToolsAnchorEl = isNavigating ? navHudAnchorEl : mapSheetAnchorEl;
+  const mapToolsPositionStyle = useMapToolsRailPosition(mapToolsAnchorEl, mapToolsRailMode);
   const draftDraggable = openComposer && !locationConfirmed;
 
   const onNavSelectTab = useCallback((tab: AppTab) => {
@@ -1457,7 +1465,7 @@ export default function MapScreen() {
       className={`tj-app${activeTab !== "map" ? " tj-app--overlay-tab" : ""}${overlaySheetOpen ? " tj-app--sheet-open" : ""}`}
     >
       <div
-        className={`tj-map-shell${activeTab !== "map" ? " tj-map-shell--background" : ""}${showMapTools ? ` tj-map-chrome--${mapToolsLayout}` : ""}${isNavigating ? " tj-map-tab--navigating" : ""}`}
+        className={`tj-map-shell${activeTab !== "map" ? " tj-map-shell--background" : ""}${isNavigating ? " tj-map-tab--navigating" : ""}`}
         aria-hidden={activeTab !== "map"}
       >
       <Map
@@ -1810,43 +1818,22 @@ export default function MapScreen() {
       )}
 
       {showMapTools && (
-        <div className={`tj-map-tools-rail tj-map-tools-rail--${mapToolsLayout}`}>
-          <MapViewModeToggle
-            mode={mapViewMode}
-            navigating={isNavigating}
-            onChange={handleMapViewModeChange}
-          />
-          <button
-            type="button"
-            className="tj-map-tool-btn tj-map-tool-btn--locate"
-            onClick={goMyLocation}
-            aria-label={t("map.currentLocation")}
-          >
-            <span className="tj-map-tool-btn__icon" aria-hidden>
-              📍
-            </span>
-            <span className="tj-map-tool-btn__label">{t("map.currentLocation")}</span>
-          </button>
-          {locErr && !isNavigating ? (
-            <div className="tj-locate-err tj-locate-err--rail" role="status">
-              <p className="tj-locate-err__text">{t(locErr)}</p>
-              <button
-                type="button"
-                className="tj-locate-retry"
-                onClick={() => {
-                  void requestCompassAccess();
-                  requestLocation({
-                    fly: true,
-                    targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
-                    focusLocation: true,
-                  });
-                }}
-              >
-                {t("common.retry")}
-              </button>
-            </div>
-          ) : null}
-        </div>
+        <MapToolsRail
+          mode={mapViewMode}
+          navigating={isNavigating}
+          positionStyle={mapToolsPositionStyle}
+          locErr={locErr}
+          onMapViewModeChange={handleMapViewModeChange}
+          onLocate={goMyLocation}
+          onLocateRetry={() => {
+            void requestCompassAccess();
+            requestLocation({
+              fly: true,
+              targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
+              focusLocation: true,
+            });
+          }}
+        />
       )}
 
       {destination &&
@@ -1858,6 +1845,7 @@ export default function MapScreen() {
           destination={destination}
           routing={routing}
           routeError={routeError}
+          onSheetElement={handleMapSheetElement}
           onDirections={() => {
             if (!destination) return;
             if (myPos) {
@@ -1879,6 +1867,7 @@ export default function MapScreen() {
           routing={routing}
           routeError={routeError}
           routeIntelligenceWarnings={routeIntelligence?.warningItems}
+          onSheetElement={handleMapSheetElement}
           onSelectRoute={(index) =>
             setRoutePlan((prev) => (prev ? { ...prev, selectedIndex: index } : prev))
           }
@@ -1946,6 +1935,7 @@ export default function MapScreen() {
             onCourseUp={nav.setMapBearingCourseUp}
             onUnlockVoice={nav.unlockVoice}
             onToggleSimulation={nav.toggleSimulation}
+            onNavHudAnchor={handleNavHudAnchor}
           />
         </>
       )}
