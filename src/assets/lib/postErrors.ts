@@ -36,6 +36,7 @@ export function createPostErrorMessageKey(error: unknown): string {
   }
 
   if (error instanceof Error) {
+    if (error.message.startsWith("composer.")) return error.message;
     const msg = error.message.toLowerCase();
     if (msg.includes("sign in")) return "errors.composerSignIn";
     if (msg.includes("location")) return "errors.postInvalidLocation";

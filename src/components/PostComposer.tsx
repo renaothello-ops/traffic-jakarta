@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type {
   FloodDepth,
@@ -11,11 +12,13 @@ import {
   FLOOD_DEPTH_OPTIONS,
   FLOOD_VEHICLE_OPTIONS,
 } from "../assets/lib/reportTypes";
+import { encodePostPhotoBlob, validatePostPhotoFile } from "../assets/lib/postPhoto";
 
 type Props = {
   type: PostType;
   text: string;
   image: string | null;
+  imageFile: File | null;
   locationConfirmed: boolean;
   floodDepth?: FloodDepth;
   floodVehicleAccess?: FloodVehicleAccess;
@@ -24,7 +27,7 @@ type Props = {
   hasMyLocation: boolean;
   onTypeChange: (type: PostType) => void;
   onTextChange: (text: string) => void;
-  onImageChange: (image: string | null) => void;
+  onImageChange: (preview: string | null, file: File | null) => void;
   onConfirmLocation: () => void;
   onUseMapCenter: () => void;
   onUseMyLocation: () => void;
@@ -38,6 +41,27 @@ type Props = {
   onPostAudienceChange: (v: PostAudience) => void;
   onPostAnonymousChange: (v: boolean) => void;
 };
+
+async function processPhotoFile(
+  file: File,
+  onImageChange: (preview: string | null, file: File | null) => void,
+  setLocalError: (key: string | null) => void
+): Promise<void> {
+  const validation = validatePostPhotoFile(file);
+  if (validation) {
+    setLocalError(validation);
+    return;
+  }
+  try {
+    const blob = await encodePostPhotoBlob(file);
+    const jpegFile = new File([blob], "report.jpg", { type: "image/jpeg" });
+    const preview = URL.createObjectURL(blob);
+    onImageChange(preview, jpegFile);
+    setLocalError(null);
+  } catch {
+    setLocalError("composer.photoEncodeFailed");
+  }
+}
 
 export default function PostComposer({
   type,
@@ -66,6 +90,8 @@ export default function PostComposer({
   onPostAnonymousChange,
 }: Props) {
   const { t } = useTranslation();
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const displayError = error ?? (photoError ? t(photoError) : null);
 
   if (!locationConfirmed) {
     return (
@@ -191,34 +217,52 @@ export default function PostComposer({
           </p>
         ) : null}
 
-        <label className="tj-file-label">
-          📷 {t("composer.photoCamera")}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="tj-file-input"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              if (!file.type.startsWith("image/")) {
-                return;
-              }
-              if (file.size > 1_500_000) {
-                return;
-              }
-              const reader = new FileReader();
-              reader.onload = () => onImageChange(reader.result as string);
-              reader.readAsDataURL(file);
-            }}
-          />
-        </label>
+        <div className="tj-composer-photo-actions">
+          <label className="tj-btn tj-btn--ghost tj-btn--compact">
+            📷 {t("composer.photoCamera")}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="tj-file-input"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                void processPhotoFile(file, onImageChange, setPhotoError);
+              }}
+            />
+          </label>
+          <label className="tj-btn tj-btn--ghost tj-btn--compact">
+            🖼 {t("composer.photoLibrary")}
+            <input
+              type="file"
+              accept="image/*"
+              className="tj-file-input"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                void processPhotoFile(file, onImageChange, setPhotoError);
+              }}
+            />
+          </label>
+          {image ? (
+            <button
+              type="button"
+              className="tj-btn tj-btn--ghost tj-btn--compact"
+              onClick={() => onImageChange(null, null)}
+            >
+              {t("composer.removePhoto")}
+            </button>
+          ) : null}
+        </div>
 
-        {image && (
-          <img src={image} alt={t("composer.reportPreviewAlt")} className="tj-preview-img" />
-        )}
+        {image ? (
+          <img src={image} alt={t("composer.reportPreviewAlt")} className="tj-preview-img tj-preview-img--composer" />
+        ) : null}
 
-        {error && <p className="tj-error">{error}</p>}
+        {displayError && <p className="tj-error">{displayError}</p>}
 
         <button
           type="button"

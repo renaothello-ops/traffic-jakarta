@@ -20,6 +20,11 @@ describe("Storage rules (static audit)", () => {
     assert.match(RULES, /request\.auth\.uid == uid/);
   });
 
+  it("post photos require auth uid match", () => {
+    assert.match(RULES, /postPhotos\/\{uid\}/);
+    assert.match(RULES, /postPhotos[\s\S]*request\.auth\.uid == uid/);
+  });
+
   it("chat photos require conversation membership", () => {
     assert.match(RULES, /chatPhotos\/\{conversationId\}/);
     assert.match(RULES, /memberKeys/);

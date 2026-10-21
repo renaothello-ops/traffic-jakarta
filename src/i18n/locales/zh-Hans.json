@@ -362,7 +362,14 @@
     "postAudience": "报告可见性",
     "audiencePublic": "公共交通报告",
     "audienceFollowers": "仅限关注者",
-    "anonymousPublicReport": "匿名发布（公开报告）"
+    "anonymousPublicReport": "匿名发布（公开报告）",
+    "photoLibrary": "Photo library",
+    "removePhoto": "Remove photo",
+    "photoInvalidType": "Please choose an image file.",
+    "photoTooLarge": "Image is too large (max 12 MB).",
+    "photoEncodeFailed": "Could not process image.",
+    "photoLoadFailed": "Could not load image.",
+    "photoStorageNotConfigured": "Photo upload is not configured for this build."
   },
   "quickReport": {
     "title": "快速报告",
@@ -589,7 +596,8 @@
     "askReporter": "询问记者",
     "moveMarkerHint": "点击“移动标记”，拖动标记，然后点击“固定标记”。",
     "confirmCount_one": "{{count}} 确认",
-    "confirmCount_other": "{{count}} 确认"
+    "confirmCount_other": "{{count}} 确认",
+    "mapsShort": "Maps"
   },
   "trust": {
     "lowConfidence": "信心度低",

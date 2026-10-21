@@ -362,7 +362,14 @@
     "postAudience": "รายงานการเปิดเผย",
     "audiencePublic": "รายงานสภาพการจราจร",
     "audienceFollowers": "ผู้ติดตามเท่านั้น",
-    "anonymousPublicReport": "โพสต์โดยไม่เปิดเผยตัวตน (รายงานสาธารณะ)"
+    "anonymousPublicReport": "โพสต์โดยไม่เปิดเผยตัวตน (รายงานสาธารณะ)",
+    "photoLibrary": "Photo library",
+    "removePhoto": "Remove photo",
+    "photoInvalidType": "Please choose an image file.",
+    "photoTooLarge": "Image is too large (max 12 MB).",
+    "photoEncodeFailed": "Could not process image.",
+    "photoLoadFailed": "Could not load image.",
+    "photoStorageNotConfigured": "Photo upload is not configured for this build."
   },
   "quickReport": {
     "title": "รายงานด่วน",
@@ -589,7 +596,8 @@
     "askReporter": "ถามนักข่าว",
     "moveMarkerHint": "แตะ \"ย้ายเครื่องหมาย\" ลากเครื่องหมาย จากนั้นแตะ \"แก้ไขเครื่องหมาย\"",
     "confirmCount_one": "{{count}} ยืนยัน",
-    "confirmCount_other": "{{count}} ยืนยัน"
+    "confirmCount_other": "{{count}} ยืนยัน",
+    "mapsShort": "Maps"
   },
   "trust": {
     "lowConfidence": "ความมั่นใจต่ำ",

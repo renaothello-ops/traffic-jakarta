@@ -362,7 +362,14 @@
     "postAudience": "تقرير الرؤية",
     "audiencePublic": "تقرير حركة المرور العامة",
     "audienceFollowers": "متابعين فقط",
-    "anonymousPublicReport": "نشر بشكل مجهول (تقرير عام)"
+    "anonymousPublicReport": "نشر بشكل مجهول (تقرير عام)",
+    "photoLibrary": "Photo library",
+    "removePhoto": "Remove photo",
+    "photoInvalidType": "Please choose an image file.",
+    "photoTooLarge": "Image is too large (max 12 MB).",
+    "photoEncodeFailed": "Could not process image.",
+    "photoLoadFailed": "Could not load image.",
+    "photoStorageNotConfigured": "Photo upload is not configured for this build."
   },
   "quickReport": {
     "title": "تقرير سريع",
@@ -589,7 +596,8 @@
     "askReporter": "اسأل المراسل",
     "moveMarkerHint": "اضغط على \"نقل العلامة\"، واسحب العلامة، ثم اضغط على \"إصلاح العلامة\".",
     "confirmCount_one": "{{count}} تأكيد",
-    "confirmCount_other": "{{count}} يؤكد"
+    "confirmCount_other": "{{count}} يؤكد",
+    "mapsShort": "Maps"
   },
   "trust": {
     "lowConfidence": "ثقة منخفضة",

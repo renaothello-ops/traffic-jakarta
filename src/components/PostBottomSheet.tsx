@@ -16,6 +16,11 @@ import { useAuth } from "../contexts/useAuth";
 import { MAX_COMMENT_LENGTH } from "../assets/lib/validation";
 import PostSocialActions from "./PostSocialActions";
 import CommentRow from "./CommentRow";
+import PostAuthorBlock from "./PostAuthorBlock";
+import { authorDisplayForPost } from "../assets/lib/authorDisplay";
+import { usePublicProfile } from "../hooks/usePublicProfiles";
+import { useUserProfile } from "../contexts/UserProfileContext";
+import { formatPublicAuthorLabel } from "../assets/lib/publicAuthor";
 
 type Props = {
   post: Post;
@@ -30,12 +35,6 @@ type Props = {
   onRequireSignIn?: () => void;
   onAskReporter?: (post: Post) => void;
 };
-
-function avatarInitial(name?: string): string {
-  const trimmed = name?.trim();
-  if (!trimmed) return "?";
-  return trimmed.charAt(0).toUpperCase();
-}
 
 export default function PostBottomSheet({
   post,
@@ -52,6 +51,8 @@ export default function PostBottomSheet({
 }: Props) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { profile: myProfile } = useUserProfile();
+  const authorProfile = usePublicProfile(post.ownerUid);
   const meta = getReportTypeMeta(post.type);
   const typeLabel = reportTypeLabel(t, post.type);
   const voterId = user?.uid ?? null;
@@ -137,7 +138,12 @@ export default function PostBottomSheet({
     setSubmittingComment(true);
     setActionError(null);
     try {
-      await addComment(post.id, trimmed, voterId, user.displayName);
+      await addComment(
+        post.id,
+        trimmed,
+        voterId,
+        formatPublicAuthorLabel(myProfile)
+      );
       setCommentText("");
     } catch (error) {
       console.error("[comment] failed:", error);
@@ -180,22 +186,18 @@ export default function PostBottomSheet({
   const floodDepth = floodDepthLabel(t, post.floodDepth);
   const floodVehicle = floodVehicleLabel(t, post.floodVehicleAccess);
 
-  const displayName = post.username || t("common.anonymous");
+  const author = authorDisplayForPost(post, authorProfile, t("common.anonymous"));
+  const trustMeta = publicTrustLabelI18n(
+    t,
+    confirmCount,
+    trustLevel,
+    isCommunityVerified
+  );
 
   return (
-    <div className="tj-bottom-sheet tj-bottom-sheet--social">
+    <div className="tj-bottom-sheet tj-bottom-sheet--social tj-post-detail">
       <div className="tj-sheet__handle" />
-      <div className="tj-post-header">
-        <div className="tj-post-header__avatar" aria-hidden>
-          {avatarInitial(displayName)}
-        </div>
-        <div className="tj-post-header__body">
-          <strong className="tj-post-header__name">{displayName}</strong>
-          <div className="tj-post-header__meta">
-            {timeAgo(post.createdAt)} ·{" "}
-            {publicTrustLabelI18n(t, confirmCount, trustLevel, isCommunityVerified)}
-          </div>
-        </div>
+      <div className="tj-post-detail__toolbar">
         <button
           type="button"
           className="tj-icon-btn"
@@ -206,22 +208,30 @@ export default function PostBottomSheet({
         </button>
       </div>
 
-      <div className="tj-post-type-title">
-        <span className="tj-post-type-title__emoji" aria-hidden>
+      <div
+        className="tj-post-detail__type-banner"
+        style={{ backgroundColor: meta.color }}
+      >
+        <span className="tj-post-detail__type-emoji" aria-hidden>
           {meta.emoji}
         </span>
-        <h2 className="tj-post-type-title__label">{typeLabel}</h2>
+        <h2 className="tj-post-detail__type-label">{typeLabel}</h2>
       </div>
 
-      {post.imageURL && (
+      {post.imageURL ? (
         <img
           src={post.imageURL}
           alt={t("composer.reportPreviewAlt")}
-          className="tj-preview-img tj-preview-img--social"
+          className="tj-post-detail__photo"
         />
-      )}
+      ) : null}
 
-      {post.text && <p className="tj-post-body">{post.text}</p>}
+      <PostAuthorBlock
+        author={author}
+        metaLine={`${timeAgo(post.createdAt)} · ${trustMeta}`}
+      />
+
+      {post.text ? <p className="tj-post-detail__body">{post.text}</p> : null}
 
       {post.type === "flooded" && (floodDepth || floodVehicle) && (
         <div className="tj-flood-summary">

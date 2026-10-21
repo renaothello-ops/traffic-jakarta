@@ -25,6 +25,7 @@ import type {
   RoutePlan,
 } from "../types";
 import {
+  allocatePostId,
   createPost,
   createPostErrorMessageKey,
   listenActivePosts,
@@ -79,6 +80,8 @@ import {
 import { useAuth } from "../contexts/useAuth";
 import { useUserProfile } from "../contexts/UserProfileContext";
 import { formatPublicAuthorLabel } from "../assets/lib/publicAuthor";
+import { uploadPostPhoto } from "../assets/lib/postPhoto";
+import { authorDisplayForPost } from "../assets/lib/authorDisplay";
 import {
   createInAppNotification,
   shouldDeliverInApp,
@@ -242,6 +245,7 @@ export default function MapScreen() {
   const followingUids = useFollowingUids(user?.uid);
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [draftPos, setDraftPos] = useState<{ lat: number; lng: number } | null>(null);
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [floodDepth, setFloodDepth] = useState<FloodDepth>("unknown");
@@ -898,7 +902,7 @@ export default function MapScreen() {
           lng: quickReportLocation.lng,
           imageURL: input.image ?? undefined,
           ownerUid: currentUser.uid,
-          displayName: currentUser.displayName,
+          displayName: userProfile?.displayName ?? null,
           authorLabel: formatPublicAuthorLabel(userProfile),
           ...(input.type === "flooded"
             ? {
@@ -1117,6 +1121,7 @@ export default function MapScreen() {
     setType("heavy_traffic");
     setText("");
     setImage(null);
+    setImageFile(null);
     setDraftPos(null);
     setLocationConfirmed(false);
     setFloodDepth("unknown");
@@ -1144,14 +1149,21 @@ export default function MapScreen() {
     const postLng = draftPos?.lng ?? mapCenter.lng;
     const isAnonymous = postAnonymous && postAudience === "public";
     try {
-      const postId = await createPost({
+      const postId = allocatePostId();
+      let imageURL: string | undefined;
+      if (imageFile) {
+        imageURL = await uploadPostPhoto(postId, imageFile);
+      }
+
+      await createPost({
+        postId,
         type,
         text,
         lat: postLat,
         lng: postLng,
-        imageURL: image ?? undefined,
+        imageURL,
         ownerUid: currentUser.uid,
-        displayName: currentUser.displayName,
+        displayName: userProfile?.displayName ?? null,
         authorLabel: formatPublicAuthorLabel(userProfile),
         audience: postAudience,
         anonymous: isAnonymous,
@@ -1165,6 +1177,31 @@ export default function MapScreen() {
       setActiveTab("map");
       setToast(t("toast.reportPosted"));
 
+      const author = authorDisplayForPost(
+        {
+          username: isAnonymous ? "Anonymous" : formatPublicAuthorLabel(userProfile),
+          ownerUid: isAnonymous ? undefined : currentUser.uid,
+          anonymous: isAnonymous,
+        },
+        userProfile
+          ? {
+              uid: userProfile.uid,
+              displayName: userProfile.displayName,
+              username: userProfile.username,
+              usernameLower: userProfile.usernameLower,
+              photoURL: userProfile.photoURL,
+              bio: userProfile.bio ?? "",
+              accountVisibility:
+                userProfile.privacySettings.accountVisibility ?? "private",
+              postCount: 0,
+              followerCount: 0,
+              followingCount: 0,
+              updatedAt: userProfile.updatedAt,
+            }
+          : null,
+        t("common.anonymous")
+      );
+
       const createdPost: Post = {
         id: postId,
         type,
@@ -1172,10 +1209,12 @@ export default function MapScreen() {
         lat: postLat,
         lng: postLng,
         createdAt: Date.now(),
-        imageURL: image ?? undefined,
+        imageURL,
         username: isAnonymous
           ? "Anonymous"
-          : formatPublicAuthorLabel(userProfile),
+          : author.username
+            ? `${author.displayName} (@${author.username})`
+            : author.displayName,
         ownerUid: isAnonymous ? undefined : currentUser.uid,
         audience: postAudience,
         anonymous: isAnonymous,
@@ -2041,7 +2080,11 @@ export default function MapScreen() {
           hasMyLocation={myPos != null}
           onTypeChange={setType}
           onTextChange={setText}
-          onImageChange={setImage}
+          imageFile={imageFile}
+          onImageChange={(preview, file) => {
+            setImage(preview);
+            setImageFile(file);
+          }}
           onConfirmLocation={() => setLocationConfirmed(true)}
           onUseMapCenter={() => {
             const p = getMapCenterPoint();

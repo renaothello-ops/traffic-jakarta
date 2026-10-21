@@ -362,7 +362,14 @@
     "postAudience": "報告可見性",
     "audiencePublic": "大眾運輸報告",
     "audienceFollowers": "僅限追蹤者",
-    "anonymousPublicReport": "匿名發布（公開報告）"
+    "anonymousPublicReport": "匿名發布（公開報告）",
+    "photoLibrary": "Photo library",
+    "removePhoto": "Remove photo",
+    "photoInvalidType": "Please choose an image file.",
+    "photoTooLarge": "Image is too large (max 12 MB).",
+    "photoEncodeFailed": "Could not process image.",
+    "photoLoadFailed": "Could not load image.",
+    "photoStorageNotConfigured": "Photo upload is not configured for this build."
   },
   "quickReport": {
     "title": "快速報告",
@@ -589,7 +596,8 @@
     "askReporter": "詢問記者",
     "moveMarkerHint": "點擊“移動標記”，拖曳標記，然後點擊“固定標記”。",
     "confirmCount_one": "{{count}} 確認",
-    "confirmCount_other": "{{count}} 確認"
+    "confirmCount_other": "{{count}} 確認",
+    "mapsShort": "Maps"
   },
   "trust": {
     "lowConfidence": "信心度低",

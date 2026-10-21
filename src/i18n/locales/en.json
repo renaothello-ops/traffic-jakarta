@@ -378,7 +378,14 @@
     "useThisLocation": "Use this location",
     "floodDepth": "Flood depth",
     "vehicleAccess": "Vehicle accessibility",
-    "photoCamera": "Photo / camera",
+    "photoCamera": "Camera",
+    "photoLibrary": "Photo library",
+    "removePhoto": "Remove photo",
+    "photoInvalidType": "Please choose an image file.",
+    "photoTooLarge": "Image is too large (max 12 MB).",
+    "photoEncodeFailed": "Could not process image.",
+    "photoLoadFailed": "Could not load image.",
+    "photoStorageNotConfigured": "Photo upload is not configured for this build.",
     "titleNew": "New report",
     "titleEdit": "Edit report",
     "describeOptional": "Describe what is happening on this road (optional)",
@@ -631,7 +638,8 @@
     "askReporter": "Ask reporter",
     "moveMarkerHint": "Tap \"Move marker\", drag the marker, then tap \"Fix marker\".",
     "confirmCount_one": "{{count}} confirm",
-    "confirmCount_other": "{{count}} confirms"
+    "confirmCount_other": "{{count}} confirms",
+    "mapsShort": "Maps"
   },
   "trust": {
     "lowConfidence": "Low confidence",

@@ -32,3 +32,15 @@ export function isValidImageDataUrl(value: string): boolean {
   if (value.length > MAX_IMAGE_DATA_URL_LENGTH) return false;
   return /^data:image\/(jpeg|jpg|png|webp|gif);base64,/i.test(value);
 }
+
+export function isValidPostImageURL(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  if (isValidImageDataUrl(v)) return true;
+  if (!v.startsWith("https://")) return false;
+  if (v.length > 2048) return false;
+  return (
+    v.includes("firebasestorage.googleapis.com") ||
+    v.includes("storage.googleapis.com")
+  );
+}

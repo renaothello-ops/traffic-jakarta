@@ -5,6 +5,8 @@ import { timeAgo } from "../assets/lib/timeAgo";
 import { updateComment, deleteComment } from "../assets/lib/comments";
 import { MAX_COMMENT_LENGTH } from "../assets/lib/validation";
 import CommentMenu from "./CommentMenu";
+import { authorDisplayForComment } from "../assets/lib/authorDisplay";
+import { usePublicProfile } from "../hooks/usePublicProfiles";
 
 type Props = {
   comment: Comment;
@@ -18,6 +20,13 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
   const [editText, setEditText] = useState(comment.text);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const profile = usePublicProfile(comment.authorUid);
+  const author = authorDisplayForComment(
+    comment.username,
+    profile,
+    t("common.anonymous")
+  );
 
   const isOwn =
     Boolean(currentUserId) &&
@@ -68,7 +77,10 @@ export default function CommentRow({ comment, currentUserId, onError }: Props) {
     <li className="tj-comment-row">
       <div className="tj-comment-row__header">
         <div className="tj-comment-row__meta">
-          <strong>{comment.username}</strong>
+          <strong>{author.displayName}</strong>
+          {author.username ? (
+            <span className="tj-comment-row__handle">@{author.username}</span>
+          ) : null}
           <span>{timeAgo(comment.createdAt)}</span>
         </div>
         {isOwn && !editing && (

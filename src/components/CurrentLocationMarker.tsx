@@ -26,7 +26,7 @@ export default function CurrentLocationMarker({
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const accuracyRef = useRef<HTMLDivElement | null>(null);
-  const coneRef = useRef<HTMLDivElement | null>(null);
+  const coneRef = useRef<SVGSVGElement | null>(null);
   const headingRef = useRef<number | null>(heading);
 
   useEffect(() => {
@@ -42,9 +42,20 @@ export default function CurrentLocationMarker({
     accuracyEl.className = "tj-my-location-accuracy";
     accuracyEl.setAttribute("aria-hidden", "true");
 
-    const coneEl = document.createElement("div");
-    coneEl.className = "tj-my-location-cone";
+    const svgNS = "http://www.w3.org/2000/svg";
+    const coneEl = document.createElementNS(svgNS, "svg");
+    coneEl.setAttribute("class", "tj-my-location-cone-svg");
+    coneEl.setAttribute("viewBox", "0 0 120 120");
     coneEl.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute(
+      "d",
+      "M60 58 L18 8 A52 52 0 0 1 102 8 Z"
+    );
+    path.setAttribute("fill", "rgba(66, 133, 244, 0.28)");
+    path.setAttribute("stroke", "rgba(66, 133, 244, 0.45)");
+    path.setAttribute("stroke-width", "1");
+    coneEl.append(path);
 
     const haloEl = document.createElement("div");
     haloEl.className = "tj-my-location-halo";
@@ -54,21 +65,13 @@ export default function CurrentLocationMarker({
     dotEl.className = "tj-my-location";
     dotEl.setAttribute("aria-hidden", "true");
 
-    const arrowEl = document.createElement("div");
-    arrowEl.className = "tj-my-location-arrow";
-    arrowEl.setAttribute("aria-hidden", "true");
-
-    el.append(accuracyEl, coneEl, haloEl, arrowEl, dotEl);
+    el.append(accuracyEl, coneEl, haloEl, dotEl);
     wrapRef.current = el;
     accuracyRef.current = accuracyEl;
     coneRef.current = coneEl;
 
     const marker = new maplibregl.Marker({ element: el, anchor: "center" });
     markerRef.current = marker;
-
-    if (import.meta.env.DEV) {
-      console.info("CURRENT_LOCATION_MARKER_CREATED");
-    }
 
     return () => {
       marker.remove();
@@ -109,21 +112,14 @@ export default function CurrentLocationMarker({
       if (!coneEl) return;
 
       const h = headingRef.current;
-      const arrowEl = wrapRef.current?.querySelector(".tj-my-location-arrow");
       if (h == null || !Number.isFinite(h)) {
         coneEl.style.display = "none";
-        if (arrowEl instanceof HTMLElement) arrowEl.style.display = "none";
         return;
       }
 
       coneEl.style.display = "block";
       const mapBearing = map.getBearing();
-      const rot = `rotate(${h - mapBearing}deg)`;
-      coneEl.style.transform = rot;
-      if (arrowEl instanceof HTMLElement) {
-        arrowEl.style.display = "block";
-        arrowEl.style.transform = rot;
-      }
+      coneEl.style.transform = `rotate(${h - mapBearing}deg)`;
     };
 
     const sync = () => {
@@ -137,20 +133,10 @@ export default function CurrentLocationMarker({
       marker.setLngLat([position.lng, position.lat]);
       marker.addTo(map);
       updateConeRotation();
-
-      if (import.meta.env.DEV) {
-        console.info("CURRENT_LOCATION_MARKER_VISIBLE", {
-          lat: position.lat,
-          lng: position.lng,
-        });
-      }
     };
 
     const onStyleData = () => {
       if (!active || !map.isStyleLoaded()) return;
-      if (import.meta.env.DEV) {
-        console.info("MAP_STYLE_LOADED");
-      }
       sync();
     };
 
@@ -169,7 +155,6 @@ export default function CurrentLocationMarker({
     };
   }, [mapRef, mapReady, position?.lat, position?.lng]);
 
-  // Re-apply cone when geographic heading changes (map bearing handled above).
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current?.getMap();
@@ -177,20 +162,13 @@ export default function CurrentLocationMarker({
     if (!map || !coneEl) return;
 
     const h = heading;
-      const arrowEl = wrapRef.current?.querySelector(".tj-my-location-arrow");
-      if (h == null || !Number.isFinite(h)) {
-        coneEl.style.display = "none";
-        if (arrowEl instanceof HTMLElement) arrowEl.style.display = "none";
-        return;
-      }
+    if (h == null || !Number.isFinite(h)) {
+      coneEl.style.display = "none";
+      return;
+    }
 
-      const rot = `rotate(${h - map.getBearing()}deg)`;
-      coneEl.style.display = "block";
-      coneEl.style.transform = rot;
-      if (arrowEl instanceof HTMLElement) {
-        arrowEl.style.display = "block";
-        arrowEl.style.transform = rot;
-      }
+    coneEl.style.display = "block";
+    coneEl.style.transform = `rotate(${h - map.getBearing()}deg)`;
   }, [heading, mapReady, mapRef]);
 
   return null;

@@ -27,8 +27,16 @@ type Options = {
   locationActive: boolean;
 };
 
-const SMOOTH_ALPHA = 0.2;
+const SMOOTH_ALPHA = 0.1;
+const HEADING_DEADBAND_DEG = 5;
 const EMIT_INTERVAL_MS = 80;
+
+function smoothHeadingDegrees(prev: number | null, raw: number): number {
+  if (prev == null) return raw;
+  const diff = ((raw - prev + 540) % 360) - 180;
+  if (Math.abs(diff) < HEADING_DEADBAND_DEG) return prev;
+  return lerpBearing(prev, raw, SMOOTH_ALPHA);
+}
 
 function readStoredCompassGranted(): boolean {
   try {
@@ -116,10 +124,7 @@ export function useDeviceHeading({ locationActive }: Options) {
       return;
     }
 
-    smoothRef.current =
-      smoothRef.current == null
-        ? raw
-        : lerpBearing(smoothRef.current, raw, SMOOTH_ALPHA);
+    smoothRef.current = smoothHeadingDegrees(smoothRef.current, raw);
 
     const now = Date.now();
     if (now - lastEmitRef.current >= EMIT_INTERVAL_MS) {

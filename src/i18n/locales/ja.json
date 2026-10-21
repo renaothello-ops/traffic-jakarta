@@ -400,7 +400,14 @@
     "useThisLocation": "この位置を使う",
     "floodDepth": "冠水の深さ",
     "vehicleAccess": "車両通行",
-    "photoCamera": "写真 / カメラ",
+    "photoCamera": "カメラ",
+    "photoLibrary": "フォトライブラリ",
+    "removePhoto": "写真を削除",
+    "photoInvalidType": "画像ファイルを選んでください。",
+    "photoTooLarge": "画像が大きすぎます（最大 12 MB）。",
+    "photoEncodeFailed": "画像を処理できませんでした。",
+    "photoLoadFailed": "画像を読み込めませんでした。",
+    "photoStorageNotConfigured": "この環境では写真アップロードが設定されていません。",
     "postAudience": "報告の公開範囲",
     "audiencePublic": "公開交通報告",
     "audienceFollowers": "フォロワーのみ",
@@ -575,6 +582,7 @@
     "signInTitle": "サインイン"
   },
   "postDetail": {
+    "mapsShort": "マップ",
     "edit": "編集",
     "delete": "削除",
     "moveMarker": "場所を変更",

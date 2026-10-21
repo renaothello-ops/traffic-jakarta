@@ -24,7 +24,7 @@ import type {
 import { normalizePostType } from "./reportTypes";
 import {
   isAllowedPostType,
-  isValidImageDataUrl,
+  isValidPostImageURL,
   MAX_POST_TEXT_LENGTH,
   sanitizeText,
 } from "./validation";
@@ -36,6 +36,10 @@ import {
 import { handleFirestoreListenError } from "./firestoreListenErrors";
 
 const col = collection(db, "posts");
+
+export function allocatePostId(): string {
+  return doc(col).id;
+}
 
 function isValidCoordinate(lat: number, lng: number): boolean {
   return (
@@ -89,6 +93,8 @@ export async function createPost(input: {
   floodVehicleAccess?: FloodVehicleAccess;
   audience?: PostAudience;
   anonymous?: boolean;
+  /** Pre-allocated document id (e.g. for Storage path before upload). */
+  postId?: string;
 }) {
   const authUid = auth.currentUser?.uid ?? null;
   if (!authUid) {
@@ -106,7 +112,7 @@ export async function createPost(input: {
 
   const text = sanitizeText(input.text ?? "", MAX_POST_TEXT_LENGTH);
   const imageURL = input.imageURL?.trim() ?? "";
-  if (imageURL && !isValidImageDataUrl(imageURL)) {
+  if (imageURL && !isValidPostImageURL(imageURL)) {
     throw new Error("Invalid image upload.");
   }
 
@@ -153,7 +159,7 @@ export async function createPost(input: {
     });
   }
 
-  const ref = doc(col);
+  const ref = input.postId ? doc(db, "posts", input.postId) : doc(col);
   const batch = writeBatch(db);
   batch.set(ref, payload);
   if (anonymous) {
@@ -274,7 +280,7 @@ export async function updatePost(
     payload.type = updates.type;
   }
   if (updates.imageURL !== undefined) {
-    if (updates.imageURL && !isValidImageDataUrl(updates.imageURL)) {
+    if (updates.imageURL && !isValidPostImageURL(updates.imageURL)) {
       throw new Error("Invalid image upload.");
     }
     payload.imageURL = updates.imageURL;

@@ -362,7 +362,14 @@
     "postAudience": "보고서 가시성",
     "audiencePublic": "대중 교통 보고서",
     "audienceFollowers": "팔로어만",
-    "anonymousPublicReport": "익명으로 게시(공개 보고서)"
+    "anonymousPublicReport": "익명으로 게시(공개 보고서)",
+    "photoLibrary": "Photo library",
+    "removePhoto": "Remove photo",
+    "photoInvalidType": "Please choose an image file.",
+    "photoTooLarge": "Image is too large (max 12 MB).",
+    "photoEncodeFailed": "Could not process image.",
+    "photoLoadFailed": "Could not load image.",
+    "photoStorageNotConfigured": "Photo upload is not configured for this build."
   },
   "quickReport": {
     "title": "빠른 보고",
@@ -589,7 +596,8 @@
     "askReporter": "기자에게 물어보세요",
     "moveMarkerHint": "'마커 이동'을 탭하고 마커를 드래그한 다음 '마커 수정'을 탭하세요.",
     "confirmCount_one": "{{count}} 확인",
-    "confirmCount_other": "{{count}} 확인"
+    "confirmCount_other": "{{count}} 확인",
+    "mapsShort": "Maps"
   },
   "trust": {
     "lowConfidence": "낮은 신뢰도",

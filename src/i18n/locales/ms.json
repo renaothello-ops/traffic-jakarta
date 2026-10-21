@@ -362,7 +362,14 @@
     "postAudience": "Report visibility",
     "audiencePublic": "Public traffic report",
     "audienceFollowers": "Followers only",
-    "anonymousPublicReport": "Post anonymously (public report)"
+    "anonymousPublicReport": "Post anonymously (public report)",
+    "photoLibrary": "Photo library",
+    "removePhoto": "Remove photo",
+    "photoInvalidType": "Please choose an image file.",
+    "photoTooLarge": "Image is too large (max 12 MB).",
+    "photoEncodeFailed": "Could not process image.",
+    "photoLoadFailed": "Could not load image.",
+    "photoStorageNotConfigured": "Photo upload is not configured for this build."
   },
   "quickReport": {
     "title": "Quick report",
@@ -589,7 +596,8 @@
     "askReporter": "Ask reporter",
     "moveMarkerHint": "Tap \"Move marker\", drag the marker, then tap \"Fix marker\".",
     "confirmCount_one": "{{count}} confirm",
-    "confirmCount_other": "{{count}} confirms"
+    "confirmCount_other": "{{count}} confirms",
+    "mapsShort": "Maps"
   },
   "trust": {
     "lowConfidence": "Low confidence",

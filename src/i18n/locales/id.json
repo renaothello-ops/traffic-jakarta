@@ -358,7 +358,14 @@
     "useThisLocation": "Gunakan lokasi ini",
     "floodDepth": "Kedalaman banjir",
     "vehicleAccess": "Akses kendaraan",
-    "photoCamera": "Foto / kamera",
+    "photoCamera": "Kamera",
+    "photoLibrary": "Galeri foto",
+    "removePhoto": "Hapus foto",
+    "photoInvalidType": "Pilih file gambar.",
+    "photoTooLarge": "Gambar terlalu besar (maks. 12 MB).",
+    "photoEncodeFailed": "Gambar tidak dapat diproses.",
+    "photoLoadFailed": "Gambar tidak dapat dimuat.",
+    "photoStorageNotConfigured": "Unggah foto belum dikonfigurasi untuk build ini.",
     "postAudience": "Visibilitas laporan",
     "audiencePublic": "Laporan lalu lintas publik",
     "audienceFollowers": "Hanya pengikut",
@@ -543,7 +550,8 @@
     "moveMarkerHint": "Ketuk \"Ubah lokasi\", geser penanda, lalu ketuk \"Tetapkan lokasi\".",
     "confirmCount_one": "{{count}} konfirmasi",
     "confirmCount_other": "{{count}} konfirmasi",
-    "askReporter": "Tanya pelapor"
+    "askReporter": "Tanya pelapor",
+    "mapsShort": "Peta"
   },
   "trust": {
     "lowConfidence": "Kepercayaan rendah",
