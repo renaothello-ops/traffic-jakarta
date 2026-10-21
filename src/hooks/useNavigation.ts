@@ -3,9 +3,17 @@ import type { MapRef } from "react-map-gl/maplibre";
 import type {
   GpsFix,
   NavigationCameraMode,
+  NavigationMapBearingMode,
   NavigationPhase,
   RoutePlan,
 } from "../types";
+import {
+  compassHeadingFromEvent,
+  GPS_HEADING_MIN_SPEED_MPS,
+  isDeviceOrientationSupported,
+  requestDeviceOrientationPermission,
+  type OrientationPermission,
+} from "../assets/lib/deviceOrientation";
 import { haversineMeters } from "../assets/lib/geo";
 import {
   bearingDegrees,
@@ -29,9 +37,12 @@ import {
 } from "../assets/lib/navigation/simulator";
 import {
   isSpeechSupported,
+  repeatLastVoice,
   resetVoiceState,
+  shouldAnnounceVoice,
   speakNavigation,
   voiceCuesForProgress,
+  type NavVoiceT,
 } from "../assets/lib/navigation/voice";
 import { getRouteBounds } from "../assets/lib/routing";
 import { NAVIGATION_FOLLOW_ZOOM } from "../assets/lib/mapCameraConfig";
@@ -58,6 +69,8 @@ export type NavigationSnapshot = {
   speechSupported: boolean;
   simulationActive: boolean;
   hasArrived: boolean;
+  mapBearingMode: NavigationMapBearingMode;
+  orientationPermission: OrientationPermission;
 };
 
 type Options = {
@@ -66,9 +79,11 @@ type Options = {
   routePlan: RoutePlan | null;
   mapViewMode: MapViewMode;
   onReroute: (origin: { lat: number; lng: number }) => Promise<boolean>;
+  voiceT: NavVoiceT;
+  voiceLanguage: string;
 };
 
-const MIN_SPEED_FOR_HEADING_MPS = 1.5;
+const MIN_SPEED_FOR_HEADING_MPS = GPS_HEADING_MIN_SPEED_MPS;
 
 export function useNavigation({
   mapRef,
@@ -76,12 +91,20 @@ export function useNavigation({
   routePlan,
   mapViewMode,
   onReroute,
+  voiceT,
+  voiceLanguage,
 }: Options): NavigationSnapshot & {
   startNavigation: () => void;
   endNavigation: () => void;
+  pauseNavigation: () => void;
+  resumeNavigation: () => void;
   recenter: () => void;
   showOverview: () => void;
   toggleVoice: () => void;
+  repeatVoice: () => void;
+  setMapBearingNorthUp: () => void;
+  setMapBearingCourseUp: () => void;
+  requestCompassAccess: () => Promise<void>;
   toggleSimulation: () => void;
 } {
   const [phase, setPhase] = useState<NavigationPhase>("preview");
@@ -105,8 +128,18 @@ export function useNavigation({
   voiceMutedRef.current = voiceMuted;
   const [simulationActive, setSimulationActive] = useState(isNavSimulationEnabled());
   const [hasArrived, setHasArrived] = useState(false);
+  const [mapBearingMode, setMapBearingMode] =
+    useState<NavigationMapBearingMode>("course");
+  const [orientationPermission, setOrientationPermission] =
+    useState<OrientationPermission>("unsupported");
 
   const watchIdRef = useRef<number | null>(null);
+  const compassHeadingRef = useRef<number | null>(null);
+  const compassListeningRef = useRef(false);
+  const voiceTRef = useRef(voiceT);
+  voiceTRef.current = voiceT;
+  const voiceLanguageRef = useRef(voiceLanguage);
+  voiceLanguageRef.current = voiceLanguage;
   const simTimerRef = useRef<number | null>(null);
   const simCursorRef = useRef<{ segmentIndex: number; t: number } | null>(null);
   const lastFixRef = useRef<GpsFix | null>(null);
@@ -130,7 +163,9 @@ export function useNavigation({
       setRawGps(fix);
       setGpsFix(fix);
       setLocationStatus("ok");
-      setLocationMessage(null);
+      setLocationMessage(
+        shouldAnnounceVoice(fix.accuracy, fix.timestamp) ? null : "nav.locationWeak"
+      );
 
       const match = matchToRoute(selectedRoute.coordinates, fix.lat, fix.lng);
       setRouteMatch(match);
@@ -150,6 +185,16 @@ export function useNavigation({
         previousFix
       ) {
         heading = bearingDegrees(previousFix.lat, previousFix.lng, fix.lat, fix.lng);
+      }
+
+      const moving =
+        fix.speed != null && fix.speed >= MIN_SPEED_FOR_HEADING_MPS;
+      if (
+        !moving &&
+        (heading == null || !Number.isFinite(heading)) &&
+        compassHeadingRef.current != null
+      ) {
+        heading = compassHeadingRef.current;
       }
 
       if (heading != null && Number.isFinite(heading)) {
@@ -188,7 +233,12 @@ export function useNavigation({
         if (distToDest <= effectiveArrivalRadiusM(fix.accuracy)) {
           setHasArrived(true);
           setPhase("arrived");
-          speakNavigation("You have arrived.", "arrived", voiceMutedRef.current);
+          speakNavigation(
+            voiceTRef.current("nav.arrived"),
+            "arrived",
+            voiceMutedRef.current,
+            voiceLanguageRef.current
+          );
           return;
         }
       }
@@ -245,16 +295,24 @@ export function useNavigation({
 
       const followPitch = MAP_VIEW_PITCH[mapViewModeRef.current];
 
+      const courseBearing =
+        mode === "follow" &&
+        mapBearingMode === "course" &&
+        pos.heading != null &&
+        Number.isFinite(pos.heading)
+          ? pos.heading
+          : 0;
+
       map.easeTo({
         center: [pos.lng, pos.lat],
         zoom: NAVIGATION_FOLLOW_ZOOM,
-        bearing: mode === "follow" && pos.heading != null ? pos.heading : 0,
+        bearing: courseBearing,
         pitch: mode === "follow" ? followPitch : 0,
         padding: { top: 120, bottom: 220, left: 0, right: 0 },
         duration: 500,
       });
     },
-    [mapReady, mapRef, routePlan]
+    [mapBearingMode, mapReady, mapRef, routePlan]
   );
 
   useEffect(() => {
@@ -262,7 +320,7 @@ export function useNavigation({
     if (cameraMode === "follow" || cameraMode === "overview") {
       updateCamera(displayPosition, cameraMode);
     }
-  }, [phase, displayPosition, cameraMode, mapViewMode, updateCamera]);
+  }, [phase, displayPosition, cameraMode, mapViewMode, mapBearingMode, updateCamera]);
 
   useEffect(() => {
     if (!mapReady || phase !== "navigating") return;
@@ -284,16 +342,20 @@ export function useNavigation({
 
   useEffect(() => {
     if (phase !== "navigating" || !progress || !progress.current) return;
+    if (!shouldAnnounceVoice(gpsFix?.accuracy, gpsFix?.timestamp)) return;
     const cues = voiceCuesForProgress(
       progress.current,
       progress.distanceToManeuverM,
-      hasArrived
+      hasArrived,
+      voiceTRef.current
     );
     for (const cue of cues) {
-      speakNavigation(cue.text, cue.key, voiceMuted);
+      speakNavigation(cue.text, cue.key, voiceMuted, voiceLanguageRef.current);
     }
   }, [
     phase,
+    gpsFix?.accuracy,
+    gpsFix?.timestamp,
     progress?.instructionIndex,
     progress?.distanceToManeuverM,
     hasArrived,
@@ -365,36 +427,95 @@ export function useNavigation({
     );
   }, [applyFix, selectedRoute, simulationActive, stopTracking]);
 
+  const onOrientation = useCallback((event: DeviceOrientationEvent) => {
+    const h = compassHeadingFromEvent(event);
+    if (h == null) return;
+    compassHeadingRef.current = h;
+  }, []);
+
+  const startCompassListening = useCallback(() => {
+    if (compassListeningRef.current || !isDeviceOrientationSupported()) return;
+    window.addEventListener("deviceorientationabsolute", onOrientation, true);
+    window.addEventListener("deviceorientation", onOrientation, true);
+    compassListeningRef.current = true;
+  }, [onOrientation]);
+
+  const stopCompassListening = useCallback(() => {
+    if (!compassListeningRef.current) return;
+    window.removeEventListener("deviceorientationabsolute", onOrientation, true);
+    window.removeEventListener("deviceorientation", onOrientation, true);
+    compassListeningRef.current = false;
+  }, [onOrientation]);
+
+  const requestCompassAccess = useCallback(async () => {
+    if (!isDeviceOrientationSupported()) return;
+    const result = await requestDeviceOrientationPermission();
+    setOrientationPermission(result);
+    if (result === "granted") startCompassListening();
+  }, [startCompassListening]);
+
+  useEffect(() => {
+    const active = phase === "navigating" || phase === "paused";
+    if (!active) {
+      stopCompassListening();
+      compassHeadingRef.current = null;
+      return;
+    }
+    if (orientationPermission === "granted") startCompassListening();
+    return () => stopCompassListening();
+  }, [orientationPermission, phase, startCompassListening, stopCompassListening]);
+
   const startNavigation = useCallback(() => {
     if (!routePlan || !selectedRoute) return;
     setPhase("navigating");
     setHasArrived(false);
     setCameraMode("follow");
+    setMapBearingMode("course");
     setShowRecenter(false);
     userPannedRef.current = false;
     offRouteCountRef.current = 0;
     resetVoiceState();
+    void requestCompassAccess();
     startWatch();
-  }, [routePlan, selectedRoute, startWatch]);
+  }, [requestCompassAccess, routePlan, selectedRoute, startWatch]);
 
   const endNavigation = useCallback(() => {
     stopTracking();
+    stopCompassListening();
     setPhase("preview");
     setHasArrived(false);
     setIsRerouting(false);
     setRerouteMessage(null);
     setCameraMode("follow");
+    setMapBearingMode("course");
     setShowRecenter(false);
     resetVoiceState();
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
-  }, [stopTracking]);
+  }, [stopCompassListening, stopTracking]);
+
+  const pauseNavigation = useCallback(() => {
+    if (phase !== "navigating") return;
+    stopTracking();
+    setPhase("paused");
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, [phase, stopTracking]);
+
+  const resumeNavigation = useCallback(() => {
+    if (phase !== "paused" || !routePlan || !selectedRoute) return;
+    setPhase("navigating");
+    setHasArrived(false);
+    startWatch();
+  }, [phase, routePlan, selectedRoute, startWatch]);
 
   useEffect(() => () => stopTracking(), [stopTracking]);
 
   const recenter = useCallback(() => {
     setCameraMode("follow");
+    setMapBearingMode("course");
     setShowRecenter(false);
     userPannedRef.current = false;
     if (displayPosition) updateCamera(displayPosition, "follow");
@@ -409,6 +530,25 @@ export function useNavigation({
   const toggleVoice = useCallback(() => {
     setVoiceMuted((v) => !v);
   }, []);
+
+  const repeatVoice = useCallback(() => {
+    repeatLastVoice(voiceMutedRef.current, voiceLanguageRef.current);
+  }, []);
+
+  const setMapBearingNorthUp = useCallback(() => {
+    setMapBearingMode("north");
+    setCameraMode("follow");
+    setShowRecenter(true);
+    if (displayPosition) updateCamera(displayPosition, "follow");
+  }, [displayPosition, updateCamera]);
+
+  const setMapBearingCourseUp = useCallback(() => {
+    setMapBearingMode("course");
+    setCameraMode("follow");
+    setShowRecenter(false);
+    userPannedRef.current = false;
+    if (displayPosition) updateCamera(displayPosition, "follow");
+  }, [displayPosition, updateCamera]);
 
   const toggleSimulation = useCallback(() => {
     if (!import.meta.env.DEV) return;
@@ -439,11 +579,19 @@ export function useNavigation({
     speechSupported: isSpeechSupported(),
     simulationActive: import.meta.env.DEV && simulationActive,
     hasArrived,
+    mapBearingMode,
+    orientationPermission,
     startNavigation,
     endNavigation,
+    pauseNavigation,
+    resumeNavigation,
     recenter,
     showOverview,
     toggleVoice,
+    repeatVoice,
+    setMapBearingNorthUp,
+    setMapBearingCourseUp,
+    requestCompassAccess,
     toggleSimulation,
   };
 }

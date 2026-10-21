@@ -488,7 +488,19 @@
     "locationDenied": "Location permission denied.",
     "locationDeniedLong": "Location access denied. Enable location in browser settings.",
     "locationUnavailable": "Location temporarily unavailable.",
-    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area."
+    "locationTimeout": "Location request timed out. Tap Retry or try again in an open area.",
+    "locationWeak": "GPS signal is weak — map updates continue; voice guidance is paused.",
+    "northUp": "North up",
+    "headingUp": "Heading up",
+    "pause": "Pause",
+    "resume": "Resume",
+    "paused": "Navigation paused",
+    "repeat": "Repeat",
+    "voiceIn": "In {{distance}}, {{action}}{{street}}",
+    "voiceNow": "{{action}}{{street}}",
+    "voiceOntoStreet": " onto {{street}}",
+    "voiceTextOnly": "Voice guidance is unavailable — follow on-screen directions.",
+    "backgroundLimit": "Keep this tab open for live GPS and voice. Locked screen or background may pause updates."
   },
   "maneuvers": {
     "depart": "Head out",

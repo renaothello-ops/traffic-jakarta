@@ -197,7 +197,7 @@ export default function MapScreen() {
   const mapRef = useRef<MapRef | null>(null);
   const { user, loading: authLoading, signIn } = useAuth();
   const { profile: userProfile } = useUserProfile();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const pendingPostIdRef = useRef<string | null>(null);
   const returnStateRestoredRef = useRef(false);
 
@@ -762,10 +762,14 @@ export default function MapScreen() {
     routePlan,
     mapViewMode,
     onReroute: handleReroute,
+    voiceT: t,
+    voiceLanguage: i18n.language,
   });
 
   const isNavigating =
-    nav.phase === "navigating" || nav.phase === "arrived";
+    nav.phase === "navigating" ||
+    nav.phase === "paused" ||
+    nav.phase === "arrived";
 
   const { heading: browseHeading, requestCompassAccess } = useDeviceHeading({
     active: !isNavigating && myPos != null,
@@ -810,15 +814,20 @@ export default function MapScreen() {
       applyMapViewMode(map, mode, {
         isNavigating,
         bearing:
-          isNavigating && nav.cameraMode === "follow"
+          isNavigating &&
+          nav.cameraMode === "follow" &&
+          nav.mapBearingMode === "course"
             ? (nav.displayPosition?.heading ?? map.getBearing())
-            : undefined,
+            : isNavigating && nav.mapBearingMode === "north"
+              ? 0
+              : undefined,
       });
     },
     [
       isNavigating,
       mapRef,
       nav.cameraMode,
+      nav.mapBearingMode,
       nav.displayPosition?.heading,
     ]
   );
@@ -1184,7 +1193,7 @@ export default function MapScreen() {
       if (map) requestManualTomTomTrafficRefresh(map);
       return;
     }
-    void requestCompassAccess();
+    void (isNavigating ? nav.requestCompassAccess() : requestCompassAccess());
     requestLocation({
       fly: true,
       targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
@@ -1811,7 +1820,10 @@ export default function MapScreen() {
           onSelectRoute={(index) =>
             setRoutePlan((prev) => (prev ? { ...prev, selectedIndex: index } : prev))
           }
-          onStartNavigation={() => nav.startNavigation()}
+          onStartNavigation={() => {
+            void nav.requestCompassAccess();
+            nav.startNavigation();
+          }}
           onClearRoute={clearRoute}
           onChangeDestination={() => {
             nav.endNavigation();
@@ -1875,6 +1887,11 @@ export default function MapScreen() {
             onOverview={nav.showOverview}
             onEnd={() => clearRoute()}
             onToggleVoice={nav.toggleVoice}
+            onRepeatVoice={nav.repeatVoice}
+            onPause={nav.pauseNavigation}
+            onResume={nav.resumeNavigation}
+            onNorthUp={nav.setMapBearingNorthUp}
+            onCourseUp={nav.setMapBearingCourseUp}
             onToggleSimulation={nav.toggleSimulation}
           />
         </>

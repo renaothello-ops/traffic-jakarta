@@ -591,6 +591,11 @@ textarea {
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
+.tj-nav-hud-top__status--hint {
+  opacity: 0.85;
+  font-size: 0.72rem;
+}
+
 .tj-nav-hud-top__reroute,
 .tj-nav-hud-top__status {
   font-size: 12px;

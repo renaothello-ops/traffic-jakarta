@@ -406,6 +406,9 @@ export type GpsFix = {
   timestamp: number;
 };
 
-export type NavigationPhase = "preview" | "navigating" | "arrived";
+export type NavigationPhase = "preview" | "navigating" | "paused" | "arrived";
 
 export type NavigationCameraMode = "follow" | "overview" | "free";
+
+/** During follow mode: rotate map to course or keep north up. */
+export type NavigationMapBearingMode = "course" | "north";

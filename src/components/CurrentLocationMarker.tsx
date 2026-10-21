@@ -80,7 +80,7 @@ export default function CurrentLocationMarker({
     wrap.classList.toggle("tj-my-location-wrap--nav", navigating);
     const showHeading =
       headingRef.current != null && Number.isFinite(headingRef.current);
-    wrap.classList.toggle("tj-my-location-wrap--heading", showHeading && !navigating);
+    wrap.classList.toggle("tj-my-location-wrap--heading", showHeading);
 
     if (accuracyEl && accuracy != null && navigating) {
       const px = Math.min(160, Math.max(24, accuracy * 0.9));
