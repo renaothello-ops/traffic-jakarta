@@ -256,7 +256,8 @@
     "mapCenter": "مركز الخريطة",
     "destinationAria": "وجهة",
     "myLocationAria": "موقعي",
-    "drawCommunityRoad": "رسم طريق المجتمع"
+    "drawCommunityRoad": "رسم طريق المجتمع",
+    "endRoute": "× End route"
   },
   "errors": {
     "searchUnavailable": "البحث غير متاح مؤقتا",

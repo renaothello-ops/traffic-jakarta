@@ -16,6 +16,8 @@ Set in Google Cloud Secret Manager / Firebase Functions secrets:
 
 Local dev: `.env.local` (gitignored).
 
+**Vercel Preview:** Project → Settings → Environment Variables → add `GOOGLE_PLACES_API_KEY` and `TOMTOM_API_KEY` (never `VITE_*`) for Preview and Production → Redeploy. The `/api/places` serverless route reads this at runtime.
+
 ## Deploy (when approved)
 
 ```bash

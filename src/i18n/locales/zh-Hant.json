@@ -256,7 +256,8 @@
     "mapCenter": "地圖中心",
     "destinationAria": "目的地",
     "myLocationAria": "我的位置",
-    "drawCommunityRoad": "繪製社區道路"
+    "drawCommunityRoad": "繪製社區道路",
+    "endRoute": "× End route"
   },
   "errors": {
     "searchUnavailable": "暫時無法搜尋",

@@ -256,7 +256,8 @@
     "mapCenter": "지도 센터",
     "destinationAria": "목적지",
     "myLocationAria": "내 위치",
-    "drawCommunityRoad": "커뮤니티 로드 그리기"
+    "drawCommunityRoad": "커뮤니티 로드 그리기",
+    "endRoute": "× End route"
   },
   "errors": {
     "searchUnavailable": "일시적으로 검색을 사용할 수 없습니다.",

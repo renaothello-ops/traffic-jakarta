@@ -242,7 +242,8 @@
     "mapCenter": "Pusat peta",
     "destinationAria": "Tujuan",
     "myLocationAria": "Lokasi saya",
-    "drawCommunityRoad": "Gambar jalan komunitas"
+    "drawCommunityRoad": "Gambar jalan komunitas",
+    "endRoute": "× End route"
   },
   "errors": {
     "searchUnavailable": "Pencarian sementara tidak tersedia",

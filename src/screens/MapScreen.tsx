@@ -1596,6 +1596,10 @@ export default function MapScreen() {
                   <div className="tj-suggestions">
                     {searchLoading ? (
                       <div className="tj-suggestions__empty">{t("map.searchSearching")}</div>
+                    ) : searchError ? (
+                      <div className="tj-suggestions__empty tj-suggestions__error" role="alert">
+                        {searchError}
+                      </div>
                     ) : suggestions.length === 0 ? (
                       <div className="tj-suggestions__empty">
                         {searchText.trim()
@@ -1759,6 +1763,21 @@ export default function MapScreen() {
         </>
       )}
 
+      {activeTab === "map" &&
+        !selectedPost &&
+        (routePlan || destination || destPickMode || isNavigating) && (
+        <button
+          type="button"
+          className={`tj-route-end-fab${
+            routePlan && nav.phase === "preview" ? " tj-route-end-fab--above-sheet" : ""
+          }${isNavigating ? " tj-route-end-fab--navigating" : ""}`}
+          onClick={() => clearRoute()}
+          aria-label={t("map.endRoute")}
+        >
+          {t("map.endRoute")}
+        </button>
+      )}
+
       {destination &&
         !routePlan &&
         !destPickMode &&
@@ -1854,7 +1873,7 @@ export default function MapScreen() {
               if (map) requestManualTomTomTrafficRefresh(map);
             }}
             onOverview={nav.showOverview}
-            onEnd={() => nav.endNavigation()}
+            onEnd={() => clearRoute()}
             onToggleVoice={nav.toggleVoice}
             onToggleSimulation={nav.toggleSimulation}
           />

@@ -15,6 +15,7 @@ import {
   parsePlacesAction,
   parsePlacesQuery,
   parsePlacesRadius,
+  parsePlacesLanguageCode,
 } from "../server/apiValidation.js";
 
 type LatLng = { latitude: number; longitude: number };
@@ -71,7 +72,12 @@ async function googlePost(
   return data;
 }
 
-async function googleGetDetails(placeId: string, apiKey: string, sessionToken?: string) {
+async function googleGetDetails(
+  placeId: string,
+  apiKey: string,
+  sessionToken?: string,
+  languageCode = "en"
+) {
   const headers: Record<string, string> = {
     "X-Goog-Api-Key": apiKey,
     "X-Goog-FieldMask": DETAILS_FIELD_MASK,
@@ -80,8 +86,9 @@ async function googleGetDetails(placeId: string, apiKey: string, sessionToken?: 
     headers["X-Goog-Session-Token"] = sessionToken;
   }
 
+  const lang = encodeURIComponent(languageCode);
   const res = await fetch(
-    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`,
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=${lang}`,
     { headers }
   );
   const data = await res.json().catch(() => ({}));
@@ -156,9 +163,11 @@ export default async function handler(req: { method?: string; body?: unknown; he
       const radiusM = parsePlacesRadius(body.radiusM ?? 25_000) ?? 25_000;
       const sessionToken = parseSessionToken(body.sessionToken);
 
+      const languageCode = parsePlacesLanguageCode(body.languageCode);
+
       const payload: Record<string, unknown> = {
         input,
-        languageCode: "en",
+        languageCode,
         regionCode: "id",
         includedRegionCodes: ["id"],
         origin: { latitude: originLat, longitude: originLng },
@@ -193,10 +202,11 @@ export default async function handler(req: { method?: string; body?: unknown; he
       }
 
       const radiusM = parsePlacesRadius(body.radiusM ?? 12_000) ?? 12_000;
+      const languageCode = parsePlacesLanguageCode(body.languageCode);
 
       const payload: Record<string, unknown> = {
         textQuery,
-        languageCode: "en",
+        languageCode,
         regionCode: "id",
         maxResultCount: parseMaxResultCount(body.maxResultCount),
         rankPreference: body.rankPreference === "RELEVANCE" ? "RELEVANCE" : "DISTANCE",
@@ -223,7 +233,8 @@ export default async function handler(req: { method?: string; body?: unknown; he
       }
 
       const sessionToken = parseSessionToken(body.sessionToken);
-      const data = await googleGetDetails(placeId, apiKey, sessionToken);
+      const languageCode = parsePlacesLanguageCode(body.languageCode);
+      const data = await googleGetDetails(placeId, apiKey, sessionToken, languageCode);
       res.setHeader("Cache-Control", "no-store");
       res.status(200).json(data);
       return;

@@ -256,7 +256,8 @@
     "mapCenter": "ศูนย์กลางแผนที่",
     "destinationAria": "ปลายทาง",
     "myLocationAria": "ตำแหน่งของฉัน",
-    "drawCommunityRoad": "วาดถนนชุมชน"
+    "drawCommunityRoad": "วาดถนนชุมชน",
+    "endRoute": "× End route"
   },
   "errors": {
     "searchUnavailable": "การค้นหาไม่สามารถใช้งานได้ชั่วคราว",

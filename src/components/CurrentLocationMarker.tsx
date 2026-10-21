@@ -78,6 +78,9 @@ export default function CurrentLocationMarker({
     if (!wrap) return;
 
     wrap.classList.toggle("tj-my-location-wrap--nav", navigating);
+    const showHeading =
+      headingRef.current != null && Number.isFinite(headingRef.current);
+    wrap.classList.toggle("tj-my-location-wrap--heading", showHeading && !navigating);
 
     if (accuracyEl && accuracy != null && navigating) {
       const px = Math.min(160, Math.max(24, accuracy * 0.9));
@@ -87,7 +90,7 @@ export default function CurrentLocationMarker({
     } else if (accuracyEl) {
       accuracyEl.style.display = navigating ? "block" : "none";
     }
-  }, [accuracy, navigating]);
+  }, [accuracy, navigating, heading]);
 
   useEffect(() => {
     if (!mapReady) return;

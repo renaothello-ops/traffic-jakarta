@@ -275,6 +275,7 @@
     "searchPlaceholder": "Search places",
     "searchSearching": "Searching…",
     "searchNoResults": "No places found",
+    "endRoute": "× End route",
     "searchTypeHint": "Type to search…",
     "tapMapDestination": "Tap map to set destination",
     "destinationMapCenter": "Destination = map center",
@@ -290,7 +291,7 @@
   },
   "errors": {
     "searchUnavailable": "Search temporarily unavailable",
-    "searchPlacesNotConfigured": "Place search is not configured on this server. Ask the operator to set GOOGLE_PLACES_API_KEY in Vercel (or .env.local for dev) and restrict the key to Places API (New).",
+    "searchPlacesNotConfigured": "Place search is not available: GOOGLE_PLACES_API_KEY is missing on the server. In Vercel → Project → Settings → Environment Variables, add GOOGLE_PLACES_API_KEY (server-side only, not VITE_*) for Preview/Production, enable Places API (New) in Google Cloud, then redeploy.",
     "searchRateLimited": "Too many search requests. Please wait a moment.",
     "searchNetwork": "Could not reach search. Check your connection and try again.",
     "locationPrivacyOff": "Location is disabled in Privacy settings.",

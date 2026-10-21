@@ -429,6 +429,15 @@ textarea {
   height: 56px;
 }
 
+.tj-my-location-wrap--heading .tj-my-location-cone {
+  display: block;
+  margin: -22px 0 0 -11px;
+  border-left-width: 11px;
+  border-right-width: 11px;
+  border-bottom-width: 22px;
+  border-bottom-color: rgba(26, 115, 232, 0.28);
+}
+
 .tj-my-location-accuracy {
   position: absolute;
   top: 50%;
@@ -3438,6 +3447,39 @@ body.tj-rtl .tj-language-option__check {
 
 .tj-onboarding .tj-welcome-lang {
   margin-bottom: 12px;
+}
+
+.tj-suggestions__error {
+  color: #b91c1c;
+  text-align: left;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.tj-route-end-fab {
+  position: fixed;
+  z-index: 54;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  top: calc(env(safe-area-inset-top, 0px) + 108px);
+  max-width: min(220px, calc(100vw - 24px));
+  min-height: var(--tj-ig-touch, 44px);
+  padding: 10px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fff;
+  font: 600 14px/1.2 system-ui, sans-serif;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.28);
+  cursor: pointer;
+}
+
+.tj-route-end-fab--above-sheet {
+  top: auto;
+  bottom: calc(var(--tj-bottom-nav-height) + min(42vh, 360px) + 12px);
+}
+
+.tj-route-end-fab--navigating {
+  top: calc(env(safe-area-inset-top, 0px) + 72px);
 }
 
 .tj-welcome__legal {

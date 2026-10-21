@@ -42,6 +42,23 @@ export function parsePlacesRadius(value: unknown): number | null {
   return n;
 }
 
+/** Google Places API (New) languageCode — BCP-47 subset used by the app. */
+export function parsePlacesLanguageCode(value: unknown): string {
+  const raw = String(value ?? "en").trim();
+  const allowed = new Set([
+    "id", "en", "ja", "ko", "ms", "th", "vi", "fil", "hi", "ar", "es", "fr",
+    "de", "pt", "it", "ru", "tr", "nl", "zh-CN", "zh-TW", "zh-Hans", "zh-Hant",
+  ]);
+  if (allowed.has(raw)) {
+    if (raw === "zh-Hans") return "zh-CN";
+    if (raw === "zh-Hant") return "zh-TW";
+    return raw;
+  }
+  const base = raw.split("-")[0];
+  if (base === "zh") return raw.toLowerCase().includes("hant") ? "zh-TW" : "zh-CN";
+  return allowed.has(base) ? base : "en";
+}
+
 export function parsePlaceId(value: unknown): string | null {
   const id = String(value ?? "").trim();
   if (!id || id.length > 512) return null;

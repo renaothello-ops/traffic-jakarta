@@ -256,7 +256,8 @@
     "mapCenter": "Map center",
     "destinationAria": "Destination",
     "myLocationAria": "My location",
-    "drawCommunityRoad": "Draw community road"
+    "drawCommunityRoad": "Draw community road",
+    "endRoute": "× End route"
   },
   "errors": {
     "searchUnavailable": "Search temporarily unavailable",

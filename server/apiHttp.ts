@@ -22,6 +22,7 @@ import {
   parsePlacesAction,
   parsePlacesQuery,
   parsePlacesRadius,
+  parsePlacesLanguageCode,
   parseRouteCoordinatePair,
   parseTileIndex,
   parseTileMode,
@@ -104,7 +105,7 @@ export async function handleApiHttp(
             ),
             body: JSON.stringify({
               input,
-              languageCode: "en",
+              languageCode: parsePlacesLanguageCode(body.languageCode),
               regionCode: "id",
               includedRegionCodes: ["id"],
               sessionToken: body.sessionToken,
@@ -146,7 +147,7 @@ export async function handleApiHttp(
             ),
             body: JSON.stringify({
               textQuery,
-              languageCode: "en",
+              languageCode: parsePlacesLanguageCode(body.languageCode),
               regionCode: "id",
               maxResultCount: parseMaxResultCount(body.maxResultCount),
               rankPreference:

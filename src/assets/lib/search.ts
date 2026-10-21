@@ -1,4 +1,6 @@
 import { haversineMeters, formatDistance } from "./geo";
+import { getCurrentAppLanguage } from "../../i18n/languagePreference";
+import { languageMeta } from "../../i18n/supportedLanguages";
 
 const JAKARTA = { lat: -6.2, lng: 106.8 };
 
@@ -145,6 +147,13 @@ export function resolvePlacesSearchErrorKey(error: unknown): string {
   return "errors.searchUnavailable";
 }
 
+function placesLanguageCodeForRequest(): string {
+  const meta = languageMeta(getCurrentAppLanguage());
+  if (meta.code === "zh-Hans") return "zh-CN";
+  if (meta.code === "zh-Hant") return "zh-TW";
+  return meta.bcp47;
+}
+
 function logPlacesDiagnostic(info: Record<string, unknown>): void {
   if (!import.meta.env.DEV) return;
   console.info("[places-search]", info);
@@ -275,6 +284,7 @@ async function autocomplete(
       originLng: bias.originLng,
       radiusM: generic ? 12000 : 35000,
       sessionToken: getPlacesSession(),
+      languageCode: placesLanguageCodeForRequest(),
     },
     signal
   );
@@ -298,6 +308,7 @@ async function textSearch(
       radiusM: 12000,
       rankPreference: "DISTANCE",
       maxResultCount: 10,
+      languageCode: placesLanguageCodeForRequest(),
     },
     signal
   );
@@ -330,7 +341,12 @@ export async function fetchPlaceDetails(
   const sessionToken = getPlacesSession();
 
   const data = await postPlaces(
-    { action: "details", placeId, sessionToken },
+    {
+      action: "details",
+      placeId,
+      sessionToken,
+      languageCode: placesLanguageCodeForRequest(),
+    },
     signal
   );
 

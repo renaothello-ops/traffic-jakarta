@@ -261,6 +261,7 @@
     "searchPlaceholder": "場所を検索",
     "searchSearching": "検索中…",
     "searchNoResults": "場所が見つかりません",
+    "endRoute": "× ルートを終了",
     "searchTypeHint": "入力して検索…",
     "tapMapDestination": "地図をタップして目的地を設定",
     "destinationMapCenter": "目的地 = 地図の中心",
@@ -306,7 +307,7 @@
     "postInvalidLocation": "投稿する前に、地図上で有効な位置を選んでください。",
     "postInvalidImage": "写真をアップロードできませんでした。小さな画像にするか、写真なしで投稿してください。",
     "postInvalidType": "この報告タイプはサポートされていません。",
-    "searchPlacesNotConfigured": "このプレビューでは場所検索を利用できません。しばらくしてからお試しください。",
+    "searchPlacesNotConfigured": "場所検索は利用できません（サーバーに GOOGLE_PLACES_API_KEY が未設定）。Vercel → プロジェクト → Settings → Environment Variables で GOOGLE_PLACES_API_KEY を Preview/Production に追加（VITE_* ではなくサーバー用）。Google Cloud で Places API (New) を有効化し、再デプロイしてください。",
     "searchRateLimited": "検索リクエストが多すぎます。少し待ってからお試しください。",
     "searchNetwork": "検索サービスに接続できません。通信を確認してください。"
   },
