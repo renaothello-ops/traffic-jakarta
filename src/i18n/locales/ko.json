@@ -473,7 +473,7 @@
     "resume": "Resume",
     "paused": "Navigation paused",
     "repeat": "Repeat",
-    "voiceIn": "In {{distance}}, {{action}}{{street}}",
+    "voiceIn": "In {{distanceSpeech}}, {{action}}{{street}}",
     "voiceNow": "{{action}}{{street}}",
     "voiceOntoStreet": " onto {{street}}",
     "voiceTextOnly": "Voice guidance is unavailable — follow on-screen directions.",
@@ -481,7 +481,13 @@
     "statsWaiting": "Getting GPS…",
     "voiceTapToEnable": "Tap to enable voice guidance",
     "voiceFailed": "Voice could not play. Check volume and browser permissions.",
-    "voiceNothingToRepeat": "No guidance to repeat yet."
+    "voiceNothingToRepeat": "No guidance to repeat yet.",
+    "speech": {
+      "meters": "{{value}} meters",
+      "kilometers": "{{value}} kilometers",
+      "minute": "{{value}} minute",
+      "minutes": "{{value}} minutes"
+    }
   },
   "maneuvers": {
     "depart": "밖으로 나가세요",

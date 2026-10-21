@@ -367,7 +367,8 @@ export function useNavigation({
       progress.current,
       progress.distanceToManeuverM,
       hasArrived,
-      voiceTRef.current
+      voiceTRef.current,
+      voiceLanguageRef.current
     );
     for (const cue of cues) {
       speakNavigation(cue.text, cue.key, voiceMuted, voiceLanguageRef.current);
@@ -553,7 +554,8 @@ export function useNavigation({
     const fallback = voiceTextForProgress(
       progress,
       hasArrived,
-      voiceTRef.current
+      voiceTRef.current,
+      voiceLanguageRef.current
     );
     const ok = repeatLastVoice(
       voiceMutedRef.current,

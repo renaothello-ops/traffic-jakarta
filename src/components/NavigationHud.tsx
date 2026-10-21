@@ -7,6 +7,7 @@ import {
   formatDuration,
 } from "../assets/lib/routing";
 import { formatDistance } from "../assets/lib/geo";
+import { safeNavTranslate } from "../assets/lib/navigation/voice";
 import ManeuverIcon from "./ManeuverIcon";
 
 type Props = NavigationSnapshot & {
@@ -63,8 +64,9 @@ export default function NavigationHud({
     ? t("nav.arrived")
     : phase === "paused"
       ? t("nav.paused")
-      : instruction?.message ||
-        t(maneuverLabelKey(maneuver), { defaultValue: t("maneuvers.unknown") });
+      : safeNavTranslate(t, maneuverLabelKey(maneuver), {
+          defaultValue: t("maneuvers.unknown", { defaultValue: "Continue" }),
+        });
   const street = hasArrived ? destination.name : instruction?.street;
   const distToTurn = progress?.distanceToManeuverM ?? 0;
 
@@ -149,6 +151,11 @@ export default function NavigationHud({
             <span>{hasArrived ? t("nav.arrived") : t("nav.arrive")}</span>
           </div>
         </div>
+        <div className="tj-nav-hud-end">
+          <button type="button" className="tj-btn tj-btn--nav-end" onClick={onEnd}>
+            {hasArrived ? t("nav.endNavigation") : t("map.endRoute")}
+          </button>
+        </div>
         <div className="tj-nav-controls">
           {phase === "navigating" ? (
             <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onPause}>
@@ -199,9 +206,6 @@ export default function NavigationHud({
               {simulationActive ? t("nav.simOn") : t("nav.simOff")}
             </button>
           ) : null}
-          <button type="button" className="tj-btn tj-btn--ghost tj-btn--compact" onClick={onEnd}>
-            {hasArrived ? t("nav.endNavigation") : t("nav.end")}
-          </button>
         </div>
       </div>
     </>

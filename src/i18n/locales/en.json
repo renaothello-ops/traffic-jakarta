@@ -503,8 +503,14 @@
     "resume": "Resume",
     "paused": "Navigation paused",
     "repeat": "Repeat",
-    "voiceIn": "In {{distance}}, {{action}}{{street}}",
+    "voiceIn": "In {{distanceSpeech}}, {{action}}{{street}}",
     "voiceNow": "{{action}}{{street}}",
+    "speech": {
+      "meters": "{{value}} meters",
+      "kilometers": "{{value}} kilometers",
+      "minute": "{{value}} minute",
+      "minutes": "{{value}} minutes"
+    },
     "voiceOntoStreet": " onto {{street}}",
     "voiceTextOnly": "Voice guidance is unavailable — follow on-screen directions.",
     "backgroundLimit": "Keep this tab open for live GPS and voice. Locked screen or background may pause updates.",

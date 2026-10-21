@@ -30,7 +30,13 @@
     "resume": "Lanjut",
     "paused": "Navigasi dijeda",
     "repeat": "Ulangi",
-    "voiceIn": "Dalam {{distance}}, {{action}}{{street}}",
+    "voiceIn": "Dalam {{distanceSpeech}}, {{action}}{{street}}",
+    "speech": {
+      "meters": "{{value}} meter",
+      "kilometers": "{{value}} kilometer",
+      "minute": "{{value}} menit",
+      "minutes": "{{value}} menit"
+    },
     "voiceNow": "{{action}}{{street}}",
     "voiceOntoStreet": " menuju {{street}}",
     "voiceTextOnly": "Panduan suara tidak tersedia — ikuti petunjuk di layar.",

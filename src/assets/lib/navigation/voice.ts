@@ -1,16 +1,26 @@
 import type { RouteInstruction } from "../../../types";
 import type { RouteProgress } from "./progress";
-import { formatDistance } from "../geo";
+import {
+  safeNavTranslate,
+  speechLocaleFromUiLanguage,
+  voiceInSpeechText,
+  voiceNowSpeechText,
+} from "./navigationSpeech";
+
+export {
+  safeNavTranslate,
+  formatMetersForSpeech,
+  formatSecondsForSpeech,
+  speechLocaleFromUiLanguage,
+} from "./navigationSpeech";
 
 type VoiceCue = {
   key: string;
   text: string;
 };
 
-export type NavVoiceT = (
-  key: string,
-  options?: { defaultValue?: string; [key: string]: unknown }
-) => string;
+export type { NavVoiceT } from "./navigationSpeech";
+import type { NavVoiceT } from "./navigationSpeech";
 
 let lastSpokenKey = "";
 let lastSpokenAt = 0;
@@ -19,12 +29,6 @@ let speechUnlocked = false;
 let lastSpeechError: string | null = null;
 
 const REPEAT_COOLDOWN_MS = 12_000;
-
-const SPEECH_LOCALE_BY_UI: Record<string, string> = {
-  ja: "ja-JP",
-  id: "id-ID",
-  en: "en-US",
-};
 
 export function resetVoiceState(): void {
   lastSpokenKey = "";
@@ -61,11 +65,6 @@ export function unlockSpeechFromUserGesture(): void {
   window.speechSynthesis.speak(warmup);
 }
 
-export function speechLocaleFromUiLanguage(language: string): string {
-  const base = language.split("-")[0]?.toLowerCase() ?? "en";
-  return SPEECH_LOCALE_BY_UI[base] ?? language;
-}
-
 export function speakNavigation(
   text: string,
   key: string,
@@ -99,36 +98,21 @@ export function speakNavigation(
   window.speechSynthesis.speak(utter);
 }
 
-function maneuverAction(instruction: RouteInstruction, t: NavVoiceT): string {
-  if (instruction.message?.trim()) return instruction.message.trim();
-  return t(`maneuvers.${instruction.maneuver}`, {
-    defaultValue: t("maneuvers.unknown"),
-  });
-}
-
-function streetSuffix(instruction: RouteInstruction, t: NavVoiceT): string {
-  if (!instruction.street?.trim()) return "";
-  return t("nav.voiceOntoStreet", { street: instruction.street });
-}
-
 export function voiceTextForProgress(
   progress: RouteProgress | null,
   hasArrived: boolean,
-  t: NavVoiceT
+  t: NavVoiceT,
+  language: string
 ): string | null {
-  if (hasArrived) return t("nav.arrived");
+  if (hasArrived) {
+    return safeNavTranslate(t, "nav.arrived", { defaultValue: "You've arrived" });
+  }
   if (!progress?.current) return null;
-  const action = maneuverAction(progress.current, t);
-  const onto = streetSuffix(progress.current, t);
   const dist = progress.distanceToManeuverM;
   if (dist <= 30 && progress.current.maneuver !== "straight") {
-    return t("nav.voiceNow", { action, street: onto });
+    return voiceNowSpeechText(progress.current, t);
   }
-  return t("nav.voiceIn", {
-    distance: formatDistance(Math.round(dist)),
-    action,
-    street: onto,
-  });
+  return voiceInSpeechText(Math.round(dist), progress.current, t, language);
 }
 
 export function repeatLastVoice(
@@ -153,38 +137,33 @@ export function voiceCuesForProgress(
   instruction: RouteInstruction,
   distanceToManeuverM: number,
   arrived: boolean,
-  t: NavVoiceT
+  t: NavVoiceT,
+  language: string
 ): VoiceCue[] {
   if (arrived) {
-    return [{ key: "arrive", text: t("nav.arrived") }];
+    return [
+      {
+        key: "arrive",
+        text: safeNavTranslate(t, "nav.arrived", { defaultValue: "You've arrived" }),
+      },
+    ];
   }
-
-  const action = maneuverAction(instruction, t);
-  const onto = streetSuffix(instruction, t);
 
   const cues: VoiceCue[] = [];
   if (distanceToManeuverM <= 30 && instruction.maneuver !== "straight") {
     cues.push({
       key: `now-${instruction.index}`,
-      text: t("nav.voiceNow", { action, street: onto }),
+      text: voiceNowSpeechText(instruction, t),
     });
   } else if (distanceToManeuverM <= 100) {
     cues.push({
       key: `100-${instruction.index}`,
-      text: t("nav.voiceIn", {
-        distance: formatDistance(Math.round(distanceToManeuverM)),
-        action,
-        street: onto,
-      }),
+      text: voiceInSpeechText(Math.round(distanceToManeuverM), instruction, t, language),
     });
   } else if (distanceToManeuverM <= 500) {
     cues.push({
       key: `500-${instruction.index}`,
-      text: t("nav.voiceIn", {
-        distance: formatDistance(Math.round(distanceToManeuverM)),
-        action,
-        street: onto,
-      }),
+      text: voiceInSpeechText(Math.round(distanceToManeuverM), instruction, t, language),
     });
   }
   return cues;

@@ -27,7 +27,13 @@
     "resume": "再開",
     "paused": "ナビを一時停止中",
     "repeat": "再読み上げ",
-    "voiceIn": "{{distance}}先、{{action}}{{street}}",
+    "voiceIn": "{{distanceSpeech}}先、{{action}}{{street}}",
+    "speech": {
+      "meters": "{{value}}メートル",
+      "kilometers": "{{value}}キロメートル",
+      "minute": "{{value}}分",
+      "minutes": "{{value}}分"
+    },
     "voiceNow": "{{action}}{{street}}",
     "voiceOntoStreet": "、{{street}}方面",
     "voiceTextOnly": "音声案内は利用できません。画面の案内に従ってください。",

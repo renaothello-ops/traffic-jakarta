@@ -1403,6 +1403,15 @@ export default function MapScreen() {
   }
 
   const showMapChrome = activeTab === "map" && !isNavigating;
+  const showMapTools = activeTab === "map" && !selectedPost;
+  const mapToolsLayout =
+    isNavigating
+      ? "navigating"
+      : routePlan && nav.phase === "preview"
+        ? "route-preview"
+        : destination && !routePlan && !destPickMode
+          ? "dest-sheet"
+          : "default";
   const draftDraggable = openComposer && !locationConfirmed;
 
   const onNavSelectTab = useCallback((tab: AppTab) => {
@@ -1448,7 +1457,7 @@ export default function MapScreen() {
       className={`tj-app${activeTab !== "map" ? " tj-app--overlay-tab" : ""}${overlaySheetOpen ? " tj-app--sheet-open" : ""}`}
     >
       <div
-        className={`tj-map-shell${activeTab !== "map" ? " tj-map-shell--background" : ""}`}
+        className={`tj-map-shell${activeTab !== "map" ? " tj-map-shell--background" : ""}${showMapTools ? ` tj-map-chrome--${mapToolsLayout}` : ""}${isNavigating ? " tj-map-tab--navigating" : ""}`}
         aria-hidden={activeTab !== "map"}
       >
       <Map
@@ -1762,35 +1771,6 @@ export default function MapScreen() {
             ) : null}
           </div>
 
-          <div className="tj-map-controls">
-            <MapViewModeToggle
-              mode={mapViewMode}
-              onChange={handleMapViewModeChange}
-            />
-            <button type="button" className="tj-locate-btn" onClick={goMyLocation}>
-              📍 {t("map.currentLocation")}
-            </button>
-            {locErr ? (
-              <div className="tj-locate-err" role="status">
-                <p className="tj-locate-err__text">{t(locErr)}</p>
-                <button
-                  type="button"
-                  className="tj-locate-retry"
-                  onClick={() => {
-                    void requestCompassAccess();
-                    requestLocation({
-                      fly: true,
-                      targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
-                      focusLocation: true,
-                    });
-                  }}
-                >
-                  {t("common.retry")}
-                </button>
-              </div>
-            ) : null}
-          </div>
-
           {destPickMode && (
             <div className="tj-road-banner">
               <span>{t("map.destPickBanner")}</span>
@@ -1829,19 +1809,44 @@ export default function MapScreen() {
         </>
       )}
 
-      {activeTab === "map" &&
-        !selectedPost &&
-        (routePlan || destination || destPickMode || isNavigating) && (
-        <button
-          type="button"
-          className={`tj-route-end-fab${
-            routePlan && nav.phase === "preview" ? " tj-route-end-fab--above-sheet" : ""
-          }${isNavigating ? " tj-route-end-fab--navigating" : ""}`}
-          onClick={() => clearRoute()}
-          aria-label={t("map.endRoute")}
-        >
-          {t("map.endRoute")}
-        </button>
+      {showMapTools && (
+        <div className={`tj-map-tools-rail tj-map-tools-rail--${mapToolsLayout}`}>
+          <MapViewModeToggle
+            mode={mapViewMode}
+            navigating={isNavigating}
+            onChange={handleMapViewModeChange}
+          />
+          <button
+            type="button"
+            className="tj-map-tool-btn tj-map-tool-btn--locate"
+            onClick={goMyLocation}
+            aria-label={t("map.currentLocation")}
+          >
+            <span className="tj-map-tool-btn__icon" aria-hidden>
+              📍
+            </span>
+            <span className="tj-map-tool-btn__label">{t("map.currentLocation")}</span>
+          </button>
+          {locErr && !isNavigating ? (
+            <div className="tj-locate-err tj-locate-err--rail" role="status">
+              <p className="tj-locate-err__text">{t(locErr)}</p>
+              <button
+                type="button"
+                className="tj-locate-retry"
+                onClick={() => {
+                  void requestCompassAccess();
+                  requestLocation({
+                    fly: true,
+                    targetZoom: CURRENT_LOCATION_FOCUS_ZOOM,
+                    focusLocation: true,
+                  });
+                }}
+              >
+                {t("common.retry")}
+              </button>
+            </div>
+          ) : null}
+        </div>
       )}
 
       {destination &&
@@ -1892,16 +1897,6 @@ export default function MapScreen() {
             setSearchError(null);
           }}
         />
-      )}
-
-      {activeTab === "map" && isNavigating && (
-        <div className="tj-map-view-toggle-nav-wrap">
-          <MapViewModeToggle
-            mode={mapViewMode}
-            navigating
-            onChange={handleMapViewModeChange}
-          />
-        </div>
       )}
 
       {routePlan && destination && activeTab === "map" && isNavigating && !quickReportOpen && (
