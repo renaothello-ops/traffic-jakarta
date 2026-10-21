@@ -40,6 +40,7 @@ type Props = {
   postAnonymous: boolean;
   onPostAudienceChange: (v: PostAudience) => void;
   onPostAnonymousChange: (v: boolean) => void;
+  photoUploadEnabled?: boolean;
 };
 
 async function processPhotoFile(
@@ -88,6 +89,7 @@ export default function PostComposer({
   postAnonymous,
   onPostAudienceChange,
   onPostAnonymousChange,
+  photoUploadEnabled = true,
 }: Props) {
   const { t } = useTranslation();
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -217,50 +219,62 @@ export default function PostComposer({
           </p>
         ) : null}
 
-        <div className="tj-composer-photo-actions">
-          <label className="tj-btn tj-btn--ghost tj-btn--compact">
-            📷 {t("composer.photoCamera")}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="tj-file-input"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (!file) return;
-                void processPhotoFile(file, onImageChange, setPhotoError);
-              }}
-            />
-          </label>
-          <label className="tj-btn tj-btn--ghost tj-btn--compact">
-            🖼 {t("composer.photoLibrary")}
-            <input
-              type="file"
-              accept="image/*"
-              className="tj-file-input"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (!file) return;
-                void processPhotoFile(file, onImageChange, setPhotoError);
-              }}
-            />
-          </label>
-          {image ? (
-            <button
-              type="button"
-              className="tj-btn tj-btn--ghost tj-btn--compact"
-              onClick={() => onImageChange(null, null)}
-            >
-              {t("composer.removePhoto")}
-            </button>
-          ) : null}
-        </div>
+        {photoUploadEnabled ? (
+          <>
+            <div className="tj-composer-photo-actions">
+              <label className="tj-btn tj-btn--ghost tj-btn--compact">
+                📷 {t("composer.photoCamera")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="tj-file-input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    void processPhotoFile(file, onImageChange, setPhotoError);
+                  }}
+                />
+              </label>
+              <label className="tj-btn tj-btn--ghost tj-btn--compact">
+                🖼 {t("composer.photoLibrary")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="tj-file-input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    void processPhotoFile(file, onImageChange, setPhotoError);
+                  }}
+                />
+              </label>
+              {image ? (
+                <button
+                  type="button"
+                  className="tj-btn tj-btn--ghost tj-btn--compact"
+                  onClick={() => onImageChange(null, null)}
+                >
+                  {t("composer.removePhoto")}
+                </button>
+              ) : null}
+            </div>
 
-        {image ? (
-          <img src={image} alt={t("composer.reportPreviewAlt")} className="tj-preview-img tj-preview-img--composer" />
-        ) : null}
+            {image ? (
+              <img
+                src={image}
+                alt={t("composer.reportPreviewAlt")}
+                className="tj-preview-img tj-preview-img--composer"
+              />
+            ) : null}
+          </>
+        ) : (
+          <p className="tj-hint" role="note">
+            {t("composer.photosUnavailable")}
+          </p>
+        )}
 
         {displayError && <p className="tj-error">{displayError}</p>}
 

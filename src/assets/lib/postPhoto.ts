@@ -50,6 +50,29 @@ export function validatePostPhotoFile(file: File): string | null {
   return null;
 }
 
+/** False when Storage is not configured or photos are explicitly disabled for this build. */
+export function isPostPhotoUploadAvailable(): boolean {
+  const flag = String(import.meta.env.VITE_POST_PHOTOS_ENABLED ?? "").trim();
+  if (flag === "false" || flag === "0") return false;
+  if (!isFirebaseConfigured()) return false;
+  const bucket = String(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "").trim();
+  if (!bucket || bucket.includes("bootstrap")) return false;
+  return true;
+}
+
+export function isPostPhotoUploadError(error: unknown): boolean {
+  if (error instanceof Error) {
+    if (error.message.startsWith("composer.photo")) return true;
+    const msg = error.message.toLowerCase();
+    if (msg.includes("storage")) return true;
+  }
+  if (typeof error === "object" && error != null && "code" in error) {
+    const code = String((error as { code: string }).code);
+    if (code.startsWith("storage/")) return true;
+  }
+  return false;
+}
+
 export async function uploadPostPhoto(
   postId: string,
   file: File

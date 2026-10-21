@@ -17,13 +17,16 @@ export default async function handler(
   }
 
   res.setHeader("Cache-Control", "no-store");
-  res.status(200).json({
+  const body: Record<string, unknown> = {
     ok: true,
     handler: "api/health",
-    secretsConfigured: {
+  };
+  if (process.env.VERCEL_ENV !== "production") {
+    body.secretsConfigured = {
       GOOGLE_PLACES_API_KEY: Boolean(googlePlacesApiKey()),
       TOMTOM_API_KEY: Boolean(tomtomApiKey()),
       OPENAI_API_KEY: Boolean(openAiApiKey()),
-    },
-  });
+    };
+  }
+  res.status(200).json(body);
 }

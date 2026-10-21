@@ -81,7 +81,11 @@ import {
 import { useAuth } from "../contexts/useAuth";
 import { useUserProfile } from "../contexts/UserProfileContext";
 import { formatPublicAuthorLabel } from "../assets/lib/publicAuthor";
-import { uploadPostPhoto } from "../assets/lib/postPhoto";
+import {
+  isPostPhotoUploadAvailable,
+  isPostPhotoUploadError,
+  uploadPostPhoto,
+} from "../assets/lib/postPhoto";
 import { authorDisplayForPost } from "../assets/lib/authorDisplay";
 import {
   createInAppNotification,
@@ -1152,8 +1156,16 @@ export default function MapScreen() {
     try {
       const postId = allocatePostId();
       let imageURL: string | undefined;
-      if (imageFile) {
-        imageURL = await uploadPostPhoto(postId, imageFile);
+      if (imageFile && isPostPhotoUploadAvailable()) {
+        try {
+          imageURL = await uploadPostPhoto(postId, imageFile);
+        } catch (uploadErr) {
+          console.error("POST_PHOTO_UPLOAD", uploadErr);
+          if (!isPostPhotoUploadError(uploadErr)) {
+            throw uploadErr;
+          }
+          setToast(t("composer.photoUploadSkipped"));
+        }
       }
 
       await createPost({
@@ -2057,6 +2069,7 @@ export default function MapScreen() {
           type={type}
           text={text}
           image={image}
+          photoUploadEnabled={isPostPhotoUploadAvailable()}
           locationConfirmed={locationConfirmed}
           floodDepth={floodDepth}
           floodVehicleAccess={floodVehicleAccess}

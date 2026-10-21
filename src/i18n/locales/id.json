@@ -372,6 +372,8 @@
     "photoEncodeFailed": "Gambar tidak dapat diproses.",
     "photoLoadFailed": "Gambar tidak dapat dimuat.",
     "photoStorageNotConfigured": "Unggah foto belum dikonfigurasi untuk build ini.",
+    "photosUnavailable": "Lampiran foto sementara tidak tersedia. Anda tetap bisa posting laporan teks.",
+    "photoUploadSkipped": "Foto tidak dapat diunggah. Laporan teks Anda tetap diposting tanpa foto.",
     "postAudience": "Visibilitas laporan",
     "audiencePublic": "Laporan lalu lintas publik",
     "audienceFollowers": "Hanya pengikut",

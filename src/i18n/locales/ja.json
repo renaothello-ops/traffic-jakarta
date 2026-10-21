@@ -414,6 +414,8 @@
     "photoEncodeFailed": "画像を処理できませんでした。",
     "photoLoadFailed": "画像を読み込めませんでした。",
     "photoStorageNotConfigured": "この環境では写真アップロードが設定されていません。",
+    "photosUnavailable": "写真添付は現在利用できません。テキストのみの投稿は可能です。",
+    "photoUploadSkipped": "写真をアップロードできませんでした。テキストのみで投稿しました。",
     "postAudience": "報告の公開範囲",
     "audiencePublic": "公開交通報告",
     "audienceFollowers": "フォロワーのみ",

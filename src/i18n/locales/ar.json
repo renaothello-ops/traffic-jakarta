@@ -369,7 +369,9 @@
     "photoTooLarge": "Image is too large (max 12 MB).",
     "photoEncodeFailed": "Could not process image.",
     "photoLoadFailed": "Could not load image.",
-    "photoStorageNotConfigured": "Photo upload is not configured for this build."
+    "photoStorageNotConfigured": "Photo upload is not configured for this build.",
+    "photosUnavailable": "Photo attachments are temporarily unavailable. You can still post a text report.",
+    "photoUploadSkipped": "Photo could not be uploaded. Your text report was posted without a photo."
   },
   "quickReport": {
     "title": "تقرير سريع",
