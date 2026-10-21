@@ -763,7 +763,7 @@ export default function MapScreen() {
     heading: deviceHeading,
     headingStatus,
     requestCompassAccess,
-    orientationPermission,
+    needsCompassPrompt,
   } = useDeviceHeading({ locationActive: myPos != null });
 
   deviceHeadingRef.current = deviceHeading;
@@ -1560,7 +1560,7 @@ export default function MapScreen() {
         <LocationHeadingHint
           visible
           headingStatus={headingStatus}
-          orientationPermission={orientationPermission}
+          needsCompassPrompt={needsCompassPrompt}
           onEnableCompass={() => void requestCompassAccess()}
         />
       ) : null}

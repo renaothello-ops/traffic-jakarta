@@ -508,10 +508,15 @@
   },
   "heading": {
     "waiting": "Direction: waiting for GPS or compass…",
+    "waitingShort": "Getting direction…",
     "tapCompass": "Tap to allow compass for direction arrow.",
+    "tapCompassShort": "Enable compass for the direction arrow.",
     "enableCompass": "Enable compass",
+    "enableCompassIos": "Enable compass",
     "denied": "Compass blocked. Allow motion/orientation in browser settings, then tap Enable compass.",
-    "noSensor": "This device has no direction sensor (desktop browsers). Use a phone for the heading arrow."
+    "deniedShort": "Compass access denied.",
+    "noSensor": "This device has no direction sensor (desktop browsers). Use a phone for the heading arrow.",
+    "unavailable": "Direction unavailable on this device."
   },
   "maneuvers": {
     "depart": "Head out",

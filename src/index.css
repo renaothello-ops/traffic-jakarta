@@ -637,6 +637,12 @@ textarea {
   pointer-events: auto;
 }
 
+.tj-heading-hint--compact {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  opacity: 0.92;
+}
+
 .tj-map-tab--navigating .tj-heading-hint {
   bottom: calc(var(--tj-tab-bar-height, 72px) + 200px);
 }

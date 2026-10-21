@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { lerpBearing } from "../assets/lib/navigation/geometry";
+import { haversineMeters } from "../assets/lib/geo";
+import { bearingDegrees, lerpBearing } from "../assets/lib/navigation/geometry";
 import {
   compassHeadingFromEvent,
+  deviceOrientationNeedsPermissionPrompt,
   GPS_HEADING_MIN_SPEED_MPS,
   isDeviceOrientationSupported,
   requestDeviceOrientationPermission,
@@ -9,13 +11,16 @@ import {
 } from "../assets/lib/deviceOrientation";
 
 const COMPASS_GRANTED_KEY = "tj_compass_orientation_granted";
+const ACQUISITION_TIMEOUT_MS = 5_000;
+const MIN_MOVE_FOR_COURSE_M = 4;
 
 export type DeviceHeadingStatus =
   | "ok"
   | "waiting"
+  | "needs_compass"
   | "denied"
-  | "unsupported"
-  | "no_sensor";
+  | "no_sensor"
+  | "unavailable";
 
 type Options = {
   /** When true, watch GPS for course heading (requires geolocation). */
@@ -42,30 +47,42 @@ function storeCompassGranted(granted: boolean): void {
   }
 }
 
+function initialOrientationPermission(): OrientationPermission {
+  if (!isDeviceOrientationSupported()) return "unsupported";
+  if (readStoredCompassGranted()) return "granted";
+  if (deviceOrientationNeedsPermissionPrompt()) return "unsupported";
+  return "granted";
+}
+
 /**
  * Geographic heading for the map marker — GPS course when moving, compass when still.
- * Compass listeners stay active after permission until the component unmounts.
  */
 export function useDeviceHeading({ locationActive }: Options) {
   const [heading, setHeading] = useState<number | null>(null);
   const [orientationPermission, setOrientationPermission] =
-    useState<OrientationPermission>(() =>
-      !isDeviceOrientationSupported()
-        ? "unsupported"
-        : readStoredCompassGranted()
-          ? "granted"
-          : "unsupported"
-    );
+    useState<OrientationPermission>(initialOrientationPermission);
+  const [resolveStatus, setResolveStatus] =
+    useState<DeviceHeadingStatus>("waiting");
 
   const smoothRef = useRef<number | null>(null);
   const gpsHeadingRef = useRef<number | null>(null);
   const gpsSpeedRef = useRef<number | null>(null);
+  const lastPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const compassRef = useRef<number | null>(null);
   const lastCompassAtRef = useRef(0);
+  const lastGpsHeadingAtRef = useRef(0);
   const lastEmitRef = useRef(0);
   const compassListeningRef = useRef(false);
   const watchIdRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
+  const acquisitionStartedRef = useRef<number | null>(null);
+  const timeoutIdRef = useRef<number | null>(null);
+
+  const markAcquisitionStart = useCallback(() => {
+    if (acquisitionStartedRef.current != null) return;
+    acquisitionStartedRef.current = Date.now();
+    setResolveStatus("waiting");
+  }, []);
 
   const pickRawHeading = useCallback((): number | null => {
     const speed = gpsSpeedRef.current;
@@ -78,6 +95,13 @@ export function useDeviceHeading({ locationActive }: Options) {
     ) {
       return gpsH;
     }
+    if (
+      gpsH != null &&
+      Number.isFinite(gpsH) &&
+      Date.now() - lastGpsHeadingAtRef.current < 8_000
+    ) {
+      return gpsH;
+    }
     const compass = compassRef.current;
     if (compass != null && Number.isFinite(compass)) return compass;
     return null;
@@ -87,10 +111,8 @@ export function useDeviceHeading({ locationActive }: Options) {
     rafRef.current = null;
     const raw = pickRawHeading();
     if (raw == null) {
-      if (smoothRef.current != null) {
-        smoothRef.current = null;
-        setHeading(null);
-      }
+      smoothRef.current = null;
+      setHeading(null);
       return;
     }
 
@@ -112,6 +134,38 @@ export function useDeviceHeading({ locationActive }: Options) {
     }
   }, [pickRawHeading]);
 
+  const recomputeResolveStatus = useCallback(() => {
+    if (pickRawHeading() != null) {
+      setResolveStatus("ok");
+      return;
+    }
+    if (!isDeviceOrientationSupported()) {
+      setResolveStatus("no_sensor");
+      return;
+    }
+    if (orientationPermission === "denied") {
+      setResolveStatus("denied");
+      return;
+    }
+    if (
+      deviceOrientationNeedsPermissionPrompt() &&
+      orientationPermission !== "granted"
+    ) {
+      setResolveStatus("needs_compass");
+      return;
+    }
+    const started = acquisitionStartedRef.current;
+    if (started == null) {
+      setResolveStatus("waiting");
+      return;
+    }
+    if (Date.now() - started < ACQUISITION_TIMEOUT_MS) {
+      setResolveStatus("waiting");
+      return;
+    }
+    setResolveStatus("unavailable");
+  }, [orientationPermission, pickRawHeading]);
+
   const onOrientation = useCallback(
     (event: DeviceOrientationEvent) => {
       const h = compassHeadingFromEvent(event);
@@ -119,16 +173,18 @@ export function useDeviceHeading({ locationActive }: Options) {
       compassRef.current = h;
       lastCompassAtRef.current = Date.now();
       emitHeading();
+      setResolveStatus("ok");
     },
     [emitHeading]
   );
 
   const startCompassListening = useCallback(() => {
     if (compassListeningRef.current || !isDeviceOrientationSupported()) return;
+    markAcquisitionStart();
     window.addEventListener("deviceorientationabsolute", onOrientation, true);
     window.addEventListener("deviceorientation", onOrientation, true);
     compassListeningRef.current = true;
-  }, [onOrientation]);
+  }, [markAcquisitionStart, onOrientation]);
 
   const stopCompassListening = useCallback(() => {
     if (!compassListeningRef.current) return;
@@ -139,6 +195,7 @@ export function useDeviceHeading({ locationActive }: Options) {
 
   const requestCompassAccess = useCallback(async () => {
     if (!isDeviceOrientationSupported()) return;
+    markAcquisitionStart();
     const result = await requestDeviceOrientationPermission();
     setOrientationPermission(result);
     storeCompassGranted(result === "granted");
@@ -146,8 +203,9 @@ export function useDeviceHeading({ locationActive }: Options) {
     if (result === "denied") {
       compassRef.current = null;
       emitHeading();
+      setResolveStatus("denied");
     }
-  }, [emitHeading, startCompassListening]);
+  }, [emitHeading, markAcquisitionStart, startCompassListening]);
 
   useEffect(() => {
     if (orientationPermission === "granted") {
@@ -157,6 +215,21 @@ export function useDeviceHeading({ locationActive }: Options) {
   }, [orientationPermission, startCompassListening, stopCompassListening]);
 
   useEffect(() => {
+    if (!locationActive) return;
+    if (!isDeviceOrientationSupported()) {
+      setResolveStatus("no_sensor");
+      return;
+    }
+    if (
+      !deviceOrientationNeedsPermissionPrompt() &&
+      orientationPermission !== "denied"
+    ) {
+      setOrientationPermission((prev) => (prev === "denied" ? prev : "granted"));
+      startCompassListening();
+    }
+  }, [locationActive, orientationPermission, startCompassListening]);
+
+  useEffect(() => {
     if (!locationActive) {
       if (watchIdRef.current != null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
@@ -164,19 +237,57 @@ export function useDeviceHeading({ locationActive }: Options) {
       }
       gpsHeadingRef.current = null;
       gpsSpeedRef.current = null;
+      lastPosRef.current = null;
       emitHeading();
+      acquisitionStartedRef.current = null;
+      if (timeoutIdRef.current != null) {
+        window.clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+      recomputeResolveStatus();
       return;
     }
 
-    if (!navigator.geolocation) return;
+    markAcquisitionStart();
+    if (!navigator.geolocation) {
+      recomputeResolveStatus();
+      return;
+    }
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
         const h = pos.coords.heading;
-        gpsHeadingRef.current =
-          h != null && Number.isFinite(h) ? h : null;
-        gpsSpeedRef.current = pos.coords.speed;
+        const speed = pos.coords.speed;
+
+        if (h != null && Number.isFinite(h)) {
+          gpsHeadingRef.current = h;
+          lastGpsHeadingAtRef.current = Date.now();
+        } else if (lastPosRef.current) {
+          const moved = bearingDegrees(
+            lastPosRef.current.lat,
+            lastPosRef.current.lng,
+            lat,
+            lng
+          );
+          const distM = haversineMeters(
+            lastPosRef.current.lat,
+            lastPosRef.current.lng,
+            lat,
+            lng
+          );
+          const movingFast =
+            speed != null && speed >= GPS_HEADING_MIN_SPEED_MPS;
+          if (movingFast || distM >= MIN_MOVE_FOR_COURSE_M) {
+            gpsHeadingRef.current = moved;
+            lastGpsHeadingAtRef.current = Date.now();
+          }
+        }
+        lastPosRef.current = { lat, lng };
+        gpsSpeedRef.current = speed;
         emitHeading();
+        if (pickRawHeading() != null) setResolveStatus("ok");
       },
       () => {
         /* location errors handled elsewhere */
@@ -190,7 +301,34 @@ export function useDeviceHeading({ locationActive }: Options) {
         watchIdRef.current = null;
       }
     };
-  }, [locationActive, emitHeading]);
+  }, [
+    locationActive,
+    emitHeading,
+    markAcquisitionStart,
+    pickRawHeading,
+    recomputeResolveStatus,
+  ]);
+
+  useEffect(() => {
+    if (!locationActive && orientationPermission !== "granted") {
+      return;
+    }
+    markAcquisitionStart();
+    if (timeoutIdRef.current != null) {
+      window.clearTimeout(timeoutIdRef.current);
+    }
+    timeoutIdRef.current = window.setTimeout(() => {
+      timeoutIdRef.current = null;
+      recomputeResolveStatus();
+    }, ACQUISITION_TIMEOUT_MS);
+
+    return () => {
+      if (timeoutIdRef.current != null) {
+        window.clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+    };
+  }, [locationActive, markAcquisitionStart, orientationPermission, recomputeResolveStatus]);
 
   useEffect(
     () => () => {
@@ -201,17 +339,8 @@ export function useDeviceHeading({ locationActive }: Options) {
     []
   );
 
-  const headingStatus: DeviceHeadingStatus = (() => {
-    if (heading != null) return "ok";
-    if (!isDeviceOrientationSupported()) return "no_sensor";
-    if (orientationPermission === "denied") return "denied";
-    if (orientationPermission === "unsupported") return "waiting";
-    if (orientationPermission === "granted") {
-      if (lastCompassAtRef.current === 0 && !locationActive) return "waiting";
-      return "waiting";
-    }
-    return "waiting";
-  })();
+  const headingStatus: DeviceHeadingStatus =
+    resolveStatus === "ok" || heading != null ? "ok" : resolveStatus;
 
   return {
     heading,
@@ -219,5 +348,6 @@ export function useDeviceHeading({ locationActive }: Options) {
     requestCompassAccess,
     orientationSupported: isDeviceOrientationSupported(),
     orientationPermission,
+    needsCompassPrompt: deviceOrientationNeedsPermissionPrompt(),
   };
 }

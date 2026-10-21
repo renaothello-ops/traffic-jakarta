@@ -7,6 +7,15 @@ export function isDeviceOrientationSupported(): boolean {
   return typeof window !== "undefined" && "DeviceOrientationEvent" in window;
 }
 
+/** True on iOS 13+ Safari where compass requires a user-gesture prompt. */
+export function deviceOrientationNeedsPermissionPrompt(): boolean {
+  if (!isDeviceOrientationSupported()) return false;
+  const DOE = DeviceOrientationEvent as typeof DeviceOrientationEvent & {
+    requestPermission?: () => Promise<PermissionState>;
+  };
+  return typeof DOE.requestPermission === "function";
+}
+
 /**
  * iOS 13+ requires a user-gesture permission prompt. Other platforms do not.
  */
@@ -40,6 +49,9 @@ export function compassHeadingFromEvent(
     return ((webkit % 360) + 360) % 360;
   }
   if (event.absolute && event.alpha != null && Number.isFinite(event.alpha)) {
+    return (((360 - event.alpha) % 360) + 360) % 360;
+  }
+  if (event.alpha != null && Number.isFinite(event.alpha)) {
     return (((360 - event.alpha) % 360) + 360) % 360;
   }
   return null;

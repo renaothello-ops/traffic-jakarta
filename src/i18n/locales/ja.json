@@ -45,10 +45,15 @@
   },
   "heading": {
     "waiting": "方向：GPSまたはコンパスを待っています…",
+    "waitingShort": "方向を取得中…",
     "tapCompass": "方向矢印のため、コンパスを許可してください。",
+    "tapCompassShort": "方向矢印のためコンパスを有効にしてください。",
     "enableCompass": "コンパスを許可",
+    "enableCompassIos": "コンパスを有効にする",
     "denied": "コンパスが拒否されています。ブラウザ設定で許可後、「コンパスを許可」をタップしてください。",
-    "noSensor": "この端末では方向センサーがありません（PCなど）。矢印表示はスマートフォンでお試しください。"
+    "deniedShort": "コンパスが拒否されています。",
+    "noSensor": "この端末では方向センサーがありません（PCなど）。矢印表示はスマートフォンでお試しください。",
+    "unavailable": "この端末では方向を取得できません。"
   },
   "welcome": {
     "title": "Traffic Jakarta へようこそ",

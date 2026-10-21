@@ -680,10 +680,15 @@
   },
   "heading": {
     "waiting": "Arah: menunggu GPS atau kompas…",
+    "waitingShort": "Mendapatkan arah…",
     "tapCompass": "Ketuk untuk mengizinkan kompas (panah arah).",
+    "tapCompassShort": "Aktifkan kompas untuk panah arah.",
     "enableCompass": "Izinkan kompas",
+    "enableCompassIos": "Aktifkan kompas",
     "denied": "Kompas diblokir. Izinkan orientasi di pengaturan browser, lalu ketuk Izinkan kompas.",
-    "noSensor": "Perangkat ini tidak punya sensor arah (browser desktop). Gunakan ponsel untuk panah arah."
+    "deniedShort": "Akses kompas ditolak.",
+    "noSensor": "Perangkat ini tidak punya sensor arah (browser desktop). Gunakan ponsel untuk panah arah.",
+    "unavailable": "Arah tidak tersedia di perangkat ini."
   },
   "welcome": {
     "title": "Welcome to Traffic Jakarta",

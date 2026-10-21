@@ -713,6 +713,11 @@
     "tapCompass": "Tap to allow compass for direction arrow.",
     "enableCompass": "Enable compass",
     "denied": "Compass blocked. Allow motion/orientation in browser settings, then tap Enable compass.",
-    "noSensor": "This device has no direction sensor (desktop browsers). Use a phone for the heading arrow."
+    "noSensor": "This device has no direction sensor (desktop browsers). Use a phone for the heading arrow.",
+    "waitingShort": "Getting direction…",
+    "tapCompassShort": "Enable compass for the direction arrow.",
+    "enableCompassIos": "Enable compass",
+    "deniedShort": "Compass access denied.",
+    "unavailable": "Direction unavailable on this device."
   }
 }
