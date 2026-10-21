@@ -12,6 +12,7 @@ import {
   safeUpstreamError,
 } from "./apiSecurity.js";
 import { handleAnalyzeReportHttp } from "./analyzeReport.js";
+import { googlePlacesApiKey, tomtomApiKey } from "./envSecrets.js";
 import {
   MAX_PLACES_QUERY_LENGTH,
   MAX_PLACES_TEXT_QUERY_LENGTH,
@@ -64,11 +65,12 @@ export async function handleApiHttp(
       return true;
     }
 
-    const key = process.env.GOOGLE_PLACES_API_KEY;
+    const key = googlePlacesApiKey();
     if (!key) {
       setJson(res, 503, {
         error: "Search temporarily unavailable",
         code: "PLACES_UNAVAILABLE",
+        reason: "missing_env",
       });
       return true;
     }
@@ -223,7 +225,7 @@ export async function handleApiHttp(
     const tileY = zoom != null ? parseTileIndex(params.get("y"), zoom) : null;
 
     if (mode && zoom != null && tileX != null && tileY != null) {
-      const key = process.env.TOMTOM_API_KEY;
+      const key = tomtomApiKey();
       if (!key) {
         res.statusCode = 500;
         res.setHeader("content-type", "text/plain; charset=utf-8");
@@ -341,7 +343,7 @@ export async function handleApiHttp(
     const zoom = parseTileZoom(legacyTile[2]);
     const tileX = zoom != null ? parseTileIndex(legacyTile[3], zoom) : null;
     const tileY = zoom != null ? parseTileIndex(legacyTile[4], zoom) : null;
-    const key = process.env.TOMTOM_API_KEY;
+    const key = tomtomApiKey();
     if (!key || !style || zoom == null || tileX == null || tileY == null) {
       res.statusCode = 400;
       res.end("Invalid tile coordinates");

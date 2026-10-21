@@ -5,6 +5,7 @@ import {
   safeErrorMessage,
   safeUpstreamError,
 } from "../server/apiSecurity.js";
+import { googlePlacesApiKey } from "../server/envSecrets.js";
 import {
   MAX_PLACES_QUERY_LENGTH,
   MAX_PLACES_TEXT_QUERY_LENGTH,
@@ -126,11 +127,12 @@ export default async function handler(req: { method?: string; body?: unknown; he
     return;
   }
 
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const apiKey = googlePlacesApiKey();
   if (!apiKey) {
     res.status(503).json({
       error: "Search temporarily unavailable",
       code: "PLACES_UNAVAILABLE",
+      reason: "missing_env",
     });
     return;
   }

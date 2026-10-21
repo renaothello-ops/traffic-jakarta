@@ -10,6 +10,7 @@ import {
   parseTileMode,
   parseTileZoom,
 } from "../server/apiValidation.js";
+import { tomtomApiKey } from "../server/envSecrets.js";
 
 export default async function handler(req: { query?: Record<string, string>; headers?: Record<string, string | string[] | undefined> }, res: {
   status: (code: number) => { send: (body: string | Buffer) => void };
@@ -42,7 +43,7 @@ export default async function handler(req: { query?: Record<string, string>; hea
       return;
     }
 
-    const key = process.env.TOMTOM_API_KEY;
+    const key = tomtomApiKey();
     if (!key) {
       res.status(500).send("Traffic overlay unavailable");
       return;

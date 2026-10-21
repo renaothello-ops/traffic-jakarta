@@ -2,6 +2,7 @@ import {
   parseLatitude,
   parseLongitude,
 } from "./apiValidation.js";
+import { tomtomApiKey } from "./envSecrets.js";
 
 export type TomTomSegmentResponse = {
   currentSpeedKph: number | null;
@@ -19,7 +20,7 @@ export async function fetchTomTomFlowSegment(
   const lng = parseLongitude(lngRaw);
   if (lat == null || lng == null) return null;
 
-  const key = process.env.TOMTOM_API_KEY;
+  const key = tomtomApiKey();
   if (!key) return null;
 
   const url = `https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?key=${encodeURIComponent(

@@ -16,7 +16,9 @@ Set in Google Cloud Secret Manager / Firebase Functions secrets:
 
 Local dev: `.env.local` (gitignored).
 
-**Vercel Preview:** Project → Settings → Environment Variables → add `GOOGLE_PLACES_API_KEY` and `TOMTOM_API_KEY` (never `VITE_*`) for Preview and Production → Redeploy. The `/api/places` serverless route reads this at runtime.
+**Vercel Preview:** Project → Settings → Environment Variables → add `GOOGLE_PLACES_API_KEY` and `TOMTOM_API_KEY` (never `VITE_*`) for Preview and Production → **Redeploy** (env changes do not apply to past deployments). Serverless routes read secrets at **runtime** via `server/envSecrets.mjs` (dynamic `process.env[name]`).
+
+**Sanity check (no secret values):** `GET /api/health` on your Preview URL returns `secretsConfigured.GOOGLE_PLACES_API_KEY: true/false` only.
 
 ## Deploy (when approved)
 

@@ -1,3 +1,5 @@
+import { tomtomApiKey } from "./envSecrets.js";
+
 export type RoutePoint = { latitude: number; longitude: number };
 
 export type TomTomInstruction = {
@@ -200,7 +202,7 @@ async function fetchOsrmFallback(params: RouteParams): Promise<NormalizedRouteRe
 export async function calculateRouteProxy(
   params: RouteParams
 ): Promise<NormalizedRouteResponse> {
-  const key = process.env.TOMTOM_API_KEY;
+  const key = tomtomApiKey();
   const tomtomKeyAvailable = Boolean(key);
 
   if (!tomtomKeyAvailable) {
@@ -258,7 +260,7 @@ export function logRouteDiagnostics(
     ROUTE_ORIGIN: `${params.originLat},${params.originLng}`,
     ROUTE_DESTINATION: `${params.destLat},${params.destLng}`,
     ROUTE_API_ENDPOINT: "/api/tomtom-route",
-    TOMTOM_KEY_AVAILABLE: Boolean(process.env.TOMTOM_API_KEY),
+    TOMTOM_KEY_AVAILABLE: Boolean(tomtomApiKey()),
     ROUTE_HTTP_STATUS: result?.tomtomHttpStatus ?? null,
     TOMTOM_ERROR_CODE: result?.tomtomHttpStatus === 403 ? "Forbidden" : null,
     TOMTOM_ERROR_MESSAGE: result?.tomtomErrorMessage ?? null,
